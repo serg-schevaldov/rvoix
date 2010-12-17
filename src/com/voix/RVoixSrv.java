@@ -93,19 +93,20 @@ public class RVoixSrv extends Service {
 	private static AudioManager aman = null;
 	
 	private static final int NOTIFY_ID = 1;
-	private Contix ctx = null;
+	public final Contix ctx = Contix.getContix();
 	
-	private ArrayList <String> wlist = null; 
-	private ArrayList <String> bmlist = null;
-	private ArrayList <String> bhlist = null;
-	private ArrayList <String> irlist = null;
-	private ArrayList <String> ialist = null;
-	private ArrayList <String> inlist = null;
-	private ArrayList <String> iilist = null;
-	private ArrayList <String> orlist = null;
-	private ArrayList <String> oalist = null;
-	private ArrayList <String> onlist = null;
-	private ArrayList <String> oilist = null;
+	public static ArrayList <String> wlist = null; 
+	public static ArrayList <String> bmlist = null;
+	public static ArrayList <String> bhlist = null;
+	public static ArrayList <String> irlist = null;
+	public static ArrayList <String> ialist = null;
+	public static ArrayList <String> inlist = null;
+	public static ArrayList <String> iilist = null;
+	public static ArrayList <String> orlist = null;
+	public static ArrayList <String> oalist = null;
+	public static ArrayList <String> onlist = null;
+	public static ArrayList <String> oilist = null;
+	
 	private ArrayList <String> get_array(int mode, char type) {
 		FContentList fc = new FContentList(FContentList.LIST_FILES[mode],this);
 		fc.read();
@@ -136,7 +137,6 @@ public class RVoixSrv extends Service {
                 wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, this.getClass().getName());
                 wakeLock.setReferenceCounted(false);
             }
-            ctx = Contix.getContix();
             ctx.setContentResolver(getContentResolver());
             if(aman == null)  aman = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
             // is_tattoo = Build.MODEL.equals("HTC Tattoo");
@@ -163,8 +163,8 @@ public class RVoixSrv extends Service {
 			getPrefs(); ziz = this;
 			if(foreground) goForeground();
 			wlist  = get_array(FContentList.WMODE,FContentList.TYPE_NONE); 
-			bhlist  = get_array(FContentList.BMODE,FContentList.TYPE_H);
-			bmlist  = get_array(FContentList.BMODE,FContentList.TYPE_M);
+			bhlist = get_array(FContentList.BMODE,FContentList.TYPE_H);
+			bmlist = get_array(FContentList.BMODE,FContentList.TYPE_M);
 			irlist = get_array(FContentList.IEMODE,FContentList.TYPE_R);
 			ialist = get_array(FContentList.IEMODE,FContentList.TYPE_A);
 			inlist = get_array(FContentList.IEMODE,FContentList.TYPE_N);
