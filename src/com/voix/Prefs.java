@@ -1,10 +1,8 @@
 package com.voix;
 
-import java.io.File;
 import java.util.List;
 
 import android.app.ActivityManager;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -14,14 +12,11 @@ import android.preference.Preference;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
 import android.preference.PreferenceScreen;
-import android.preference.Preference.OnPreferenceClickListener;
-import android.widget.Toast;
 
 public class Prefs extends PreferenceActivity 
 	implements SharedPreferences.OnSharedPreferenceChangeListener {
 	
 	private boolean prefs_changed;
-	public static final int BW_REQ_CODE = 22;
 	private String fdir;
 	
 	@Override
@@ -40,17 +35,6 @@ public class Prefs extends PreferenceActivity
         ListPreference m = (ListPreference) screen.findPreference("format");
        	
         m.setSummary(str2int(settings.getString("format", "0")) == 0 ? "WAV" : "MP3");
-
-		String []x = getResources().getStringArray(R.array.OutCallActions);
-		m = (ListPreference) screen.findPreference("outgoing_calls");
-		m.setSummary(x[str2int(settings.getString("outgoing_calls", "0"))]);
-
-		String []z = {"unknown_numbers", "numbers_in_contacts", "numbers_not_in_contacts"};
-		String []ia = getResources().getStringArray(R.array.InCallActions);
-		for(String s : z) {
-			m = (ListPreference) screen.findPreference(s);
-			m.setSummary(ia[str2int(settings.getString(s, "0"))]);
-		}
 		
 		String []q = {"boost_up", "boost_dn"};
 		for(String s : q) {
@@ -58,87 +42,15 @@ public class Prefs extends PreferenceActivity
 			m.setSummary(getString(R.string.SCurVal) + " " + settings.getString(s, "0"));
 		}
 			
-		String []y = {"max_files", "max_storage", "max_time", "min_out_time"};
+		String []y = {"max_files", "max_storage", "max_time"};
 		for(String s : y) {
 			EditTextPreference e = (EditTextPreference) screen.findPreference(s);
 			e.setSummary(getString(R.string.SCurVal) + " " + settings.getString(s, "")); 
 		}
 
-		String []iw = getResources().getStringArray(R.array.BlistActions);
-		m = (ListPreference) screen.findPreference("bmode");
-		int io = str2int(settings.getString("bmode", "0"));
-		if(io > 3) io = 0;
-		m.setSummary(iw[io]);
-
 	       screen.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
 		Log.dbg("onCreate(): exit");
         
-		Preference p;
-		p = screen.findPreference("edit_wlist");
-       	p.setSummary(getString((new File(fdir+FContentList.LIST_FILES[0])).exists() 
-       		? R.string.SListActive : R.string.SListInactive));
-       	p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-       		@Override
-       		public boolean onPreferenceClick(Preference preference) {
-       			Intent intent = new Intent().setClassName("com.voix", "com.voix.BWList");
-       			intent.putExtra("list_color", FContentList.WMODE);
-       			startActivityForResult(intent, BW_REQ_CODE);
-       			return false;
-       		}});
-       	p = screen.findPreference("edit_blist");
-       	p.setSummary(getString((new File(fdir+FContentList.LIST_FILES[1])).exists() 
-       			? R.string.SListActive : R.string.SListInactive));
-       	p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-       		@Override
-       		public boolean onPreferenceClick(Preference preference) {
-       			Intent intent = new Intent().setClassName("com.voix", "com.voix.BWList");
-       			intent.putExtra("list_color", FContentList.BMODE);
-       			startActivityForResult(intent, BW_REQ_CODE);
-       			return false;
-       		}});
-       	p = screen.findPreference("edit_ielist");
-       	p.setSummary(getString((new File(fdir+FContentList.LIST_FILES[2])).exists() 
-       			? R.string.SListActive : R.string.SListInactive));
-       	p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-       		@Override
-       		public boolean onPreferenceClick(Preference preference) {
-       			Intent intent = new Intent().setClassName("com.voix", "com.voix.BWList");
-       			intent.putExtra("list_color", FContentList.IEMODE);
-       			startActivityForResult(intent, BW_REQ_CODE);
-       			return false;
-       		}});
-       	p = screen.findPreference("edit_oelist");
-       	p.setSummary(getString((new File(fdir+FContentList.LIST_FILES[3])).exists() 
-       			? R.string.SListActive : R.string.SListInactive));
-       	p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-       		@Override
-       		public boolean onPreferenceClick(Preference preference) {
-       			Intent intent = new Intent().setClassName("com.voix", "com.voix.BWList");
-       			intent.putExtra("list_color", FContentList.OEMODE);
-       			startActivityForResult(intent, BW_REQ_CODE);
-       			return false;
-       		}});
-
-       	final Preference pp = screen.findPreference("delete_log");
-       	final File ff = new File(RVoixSrv.ServiceLogger.logfile);
-       	final Context ctx = this;
-       	if(!ff.exists()) {
-       		pp.setEnabled(false);
-       		pp.setSummary(R.string.SNoLogFile);
-       	} else pp.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-       		@Override
-       		public boolean onPreferenceClick(Preference preference) {
-       			try {       			
-       				ff.delete();
-       				pp.setEnabled(false);
-       				pp.setSummary(R.string.SNoLogFile);
-       				Toast.makeText(ctx, R.string.SLogCleared, Toast.LENGTH_SHORT).show();
-       			} catch (Exception e) {
-       				e.printStackTrace();
-       				Toast.makeText(ctx, R.string.SCantDeleteLogFile, Toast.LENGTH_SHORT).show();
-       			}
-       			return false;
-       		}});
 	}
 
     private int str2int(String s) { // won't use Integer.parseInt
@@ -187,14 +99,6 @@ public class Prefs extends PreferenceActivity
 		   Log.dbg("onActivityResult() code="+requestCode+", result="+resultCode);
 		   if(resultCode == 1) {
 			   prefs_changed = true;
-			   PreferenceScreen screen = getPreferenceScreen();
-			   Preference p;
-			   String[] lst = {"edit_wlist","edit_blist","edit_ielist","edit_oelist" };
-			   for(int i = 0; i < lst.length; i++) {
-				   p = screen.findPreference(lst[i]);
-				   p.setSummary(getString((new File(fdir+FContentList.LIST_FILES[i])).exists() 
-						   ? R.string.SListActive : R.string.SListInactive));
-			   }   
 			   java.lang.System.gc();
 			   setResult(1);
 		   }   
