@@ -1,7 +1,6 @@
 package com.voix;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -27,7 +26,6 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.Toast;
 import android.widget.AbsListView.OnScrollListener;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
@@ -52,6 +50,23 @@ public class Browser extends ListActivity {
 	private final ArrayList<String> ac_items = new ArrayList<String>();
 	private Context context = this;
 	
+    
+	public void startServiceIfNotRuning() {
+		boolean isRuning = false;
+		ActivityManager am = (ActivityManager)this.getSystemService(ACTIVITY_SERVICE);
+		List<ActivityManager.RunningServiceInfo> ls = am.getRunningServices(1000);
+		for(int i = 0; i < ls.size(); i++) {
+			if(ls.get(i).process.compareTo("com.voix:remote")==0) {
+				isRuning = true;
+				break;
+			}
+		}
+		if (!isRuning) {
+			Intent intie = new Intent().setClassName("com.voix", "com.voix.RVoixSrv");
+			startService(intie);
+		}               
+}
+
 	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -103,6 +118,9 @@ public class Browser extends ListActivity {
         adapter = new ListLineAdapter(this);
         setAdapter(filter);
         Log.dbg("onCreate(): exit");
+
+        startServiceIfNotRuning();
+        
 	}
 	
 	void setAdapter(String flt) {
@@ -396,24 +414,7 @@ public class Browser extends ListActivity {
 		try {
 			String tm;
 			if(file.endsWith("wav") && size != 0) size = (size-44)/(8000*4);
-			else {
-				FileInputStream fip = new FileInputStream(new File(file));
-				try {
-					byte[] bb = new byte[12];
-					fip.skip(size-195);
-					fip.read(bb, 0, 12);
-					if(bb[0]=='X' && bb[1] == 'i' && bb[2] == 'n' && bb[3]== 'g') {
-						size =	((bb[8] & 0xff) << 24) + ((bb[9]& 0xff) << 16) + ((bb[10]& 0xff) << 8) + (bb[11]& 0xff);
-						size = (size*576)/11025;
-					} else size = size/8000;	
-				} catch(Exception e) {
-					e.printStackTrace();
-					Log.err("exception in trim");
-					size = size/8000;
-				} finally {
-					fip.close();
-				}
-			}
+			else size = 3*size/8000;
 			tm = String.format("%02d:%02d", size/60, size % 60);
 			s = file.substring(dirlen+2,file.length()-4); // skip "I-" or "O-" 
 			s = s.substring(0,2) + "/" + s.substring(3,5)+ " - " 
@@ -524,7 +525,7 @@ public class Browser extends ListActivity {
     }
 	
     private char selected_type = FContentList.TYPE_NONE;
-    private int list_color = FContentList.BMODE;
+    private int list_color = 0;
 
 	private void set_button1(Dialog dlg, int id, int val) {
 		final Button btn = (Button) dlg.findViewById(id);
@@ -540,14 +541,10 @@ public class Browser extends ListActivity {
     private void add_to_list() {
     	final Dialog dialog = new Dialog(this);
 		Button btn;
-		list_color = FContentList.BMODE;
+		list_color = 0;
 		dialog.setContentView(R.layout.sel_lnames);
 		dialog.setTitle(R.string.SSelList);
 		dialog.setTitle(R.string.SOverType);
-		set_button1(dialog, R.id.ButtonWlist, FContentList.WMODE);
-		set_button1(dialog, R.id.ButtonBlist, FContentList.BMODE);
-		set_button1(dialog, R.id.ButtonIElist, FContentList.IEMODE);
-		set_button1(dialog, R.id.ButtonOElist, FContentList.OEMODE);
 		btn = (Button) dialog.findViewById(R.id.ButtonCancel);
 		btn.setOnClickListener(new OnClickListener() {
 			public void onClick(View v) {
@@ -576,19 +573,9 @@ public class Browser extends ListActivity {
 		Button btn;
 		selected_type = FContentList.TYPE_NONE;
 		
-		if(list_color == FContentList.BMODE) {
-			dialog.setContentView(R.layout.dialog_bk_type);
-			dialog.setTitle(R.string.SOverType);
-			set_button2(dialog, R.id.ButtonH, FContentList.TYPE_H);
-			set_button2(dialog, R.id.ButtonM, FContentList.TYPE_M);
-		} else {
-			dialog.setContentView(R.layout.dialog_over_type);
-			dialog.setTitle(R.string.SOverType);
-			set_button2(dialog, R.id.ButtonR, FContentList.TYPE_R);
-			set_button2(dialog, R.id.ButtonA, FContentList.TYPE_A);
-			set_button2(dialog, R.id.ButtonN, FContentList.TYPE_N);
-			set_button2(dialog, R.id.ButtonI, FContentList.TYPE_I);
-		}
+		dialog.setContentView(R.layout.dialog_over_type);
+		dialog.setTitle(R.string.SOverType);
+		set_button2(dialog, R.id.ButtonI, FContentList.TYPE_I);
 		btn = (Button) dialog.findViewById(R.id.ButtonCancel);
 		btn.setOnClickListener(new OnClickListener() {
            public void onClick(View v) {
@@ -598,32 +585,7 @@ public class Browser extends ListActivity {
 		dialog.show();
 	}
     private void insert_to_list() {
-    	FContentList fc = new FContentList(FContentList.LIST_FILES[list_color],context);
- 	   	String number = recordings.get(lpress).fname.substring(dirlen+12);
- 	   	number = number.substring(0, number.length()-4);
- 	   	number = cut_chunk(number); 
- 	   	fc.read();
- 	   	char tt = list_color != FContentList.WMODE ? FContentList.TYPE_Z : FContentList.TYPE_NONE;
- 	   	ArrayList <String> a = fc.get_array(tt);
- 	   	if(!a.contains(number)) {
- 	   		Log.msg("Addnig " + number + " to list " + list_color);
- 	   		if(list_color != FContentList.WMODE) number = number + '\t'+selected_type; 
- 	   		fc.add(number);
- 	   		fc.write();
- 	   		Toast.makeText(this, R.string.TNumAdded, Toast.LENGTH_SHORT).show();
- 	   		ActivityManager am = (ActivityManager)context.getSystemService(ACTIVITY_SERVICE);  
- 	   		List<ActivityManager.RunningServiceInfo> ls = am.getRunningServices(1000);
- 	   		for(int i = 0; i < ls.size(); i++) {
-			   if(ls.get(i).process.compareTo("com.voix:remote")==0) {
-				   Intent intent = new Intent().setClassName("com.voix", "com.voix.RVoixSrv");
-				   if(startService(intent)!= null) Log.msg("service restarted");
-				   break;
-			   }
- 	   		}
- 	   	} else {
- 	   		Log.msg("Number " + number + " already present in the list.");
- 	   		Toast.makeText(ctx, R.string.TAlreadyPresent, Toast.LENGTH_SHORT).show();
- 	   	}
+    	//alabala
     }
 }
 

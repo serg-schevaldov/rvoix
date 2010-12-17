@@ -5,7 +5,6 @@ public class Log {
 
 	private static String className;
 	private static final String log_tag = "com.voix";
-		
 	private static final void set_classname() {
 		className = Thread.currentThread().getStackTrace()[4].getClassName();
 		int i = className.lastIndexOf('.');

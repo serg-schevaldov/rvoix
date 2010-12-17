@@ -325,7 +325,6 @@ void *encode(void *init) {
 
 #ifdef USING_LAME
      if(mp3) {
-
 	gfp = lame_init();
 	lame_set_errorf(gfp,lame_error_handler);
 	lame_set_debugf(gfp,lame_error_handler);
@@ -342,9 +341,7 @@ void *encode(void *init) {
 	if (lame_get_VBR(gfp) == vbr_off) lame_set_VBR(gfp, vbr_default);
         lame_set_VBR_quality(gfp, 7.0);
 	lame_set_findReplayGain(gfp, 0);
-	lame_set_bWriteVbrTag(gfp, 1);
 	lame_set_out_samplerate(gfp,11025);
-/*	lame_set_num_samples(gfp,i/2); */
 #endif
 	if(lame_init_params(gfp) < 0) {
 	     log_err("encode: failed to init lame"); 	
@@ -399,9 +396,6 @@ void *encode(void *init) {
 
 	i = (uint32_t) lame_encode_flush(gfp,(unsigned char *)b0,OCHSZ);
 	if(i) write(fd_out,b0,i);
-	i = lame_get_lametag_frame(gfp,(unsigned char *)b0,OCHSZ);
-	log_info("lame_get_lametag_frame returned %d",i);
-	if(i>0) write(fd_out,b0,i);
 	lame_close(gfp);
      } else {		
 #endif
@@ -542,15 +536,14 @@ static void *say_them(void *p) {
         log_info("answering...");
 
 	while(1) {	
-	    int i,m;
+	    int i;
 	    i  = read(aa_file,buff,BUFFER_SIZE);
 	    if(i <= 0) break;
-	    m = write(fd,buff,i);
-	    log_info("read %d wrote %d", i, m);	
-	 //   if(m <= 0) break;
+	    i = write(fd,buff,i);
+	    if(i <= 0) break;
 	}
 
-//	ioctl(fd,VOCPCM_UNREGISTER_CLIENT,0);
+	ioctl(fd,VOCPCM_UNREGISTER_CLIENT,0);
         close(fd);
 	close(aa_file);
 	free(buff);

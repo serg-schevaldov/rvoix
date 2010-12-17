@@ -18,26 +18,18 @@ public class FContentList extends ArrayList <String> {
 	private static final long serialVersionUID = 1L;
 
 	public static final String[] LIST_FILES = {
-		"wlist", "blist", "ilist", "olist"
+		"ilist", "olist"
 	};
 	
 	public static final String[] LIST_FILES_EXT_PREFIXES = {
-		"/sdcard/voix/.wlist", "/sdcard/voix/.blist", "/sdcard/voix/.ilist", "/sdcard/voix/.olist"
+		"/sdcard/voix/.ilist", "/sdcard/voix/.olist"
 	};
 	
-	public static final int WMODE = 0;
-	public static final int BMODE = 1;
-	public static final int IEMODE = 2;
-	public static final int OEMODE = 3;
+	public static final int IEMODE = 0;
+	public static final int OEMODE = 1;
 	
 	public static final char TYPE_NONE = 0;
-	public static final char TYPE_H = 'h';	// hang up
-	public static final char TYPE_M = 'm';	// mute
-	public static final char TYPE_R = 'r';	// record
-	public static final char TYPE_A = 'a';	// ask
-	public static final char TYPE_N = 'n';	// don't record
 	public static final char TYPE_I = 'i';	// in-call record
-	public static final char TYPE_Z = 'z';	// any type
 	
 	public static final String FAVS_FILE = "/sdcard/voix/.favourites";
 	
@@ -45,7 +37,7 @@ public class FContentList extends ArrayList <String> {
 	private String file;
 	private Context ctx;
 	boolean external;
-		
+	
 	FContentList(String fname, Context context) {
 		file = new String(fname);
 		external = (file.charAt(0) == '/');
@@ -57,7 +49,7 @@ public class FContentList extends ArrayList <String> {
 			clear();
 			File f = new File(ctx.getFilesDir() + "/" + file);
 			if(!f.exists()) {
-				// Log.dbg(file + " does not exist");
+				Log.msg(file + " list does not exist");
 				return;
 			}
 			FileInputStream reader = ctx.openFileInput(file);
@@ -71,7 +63,7 @@ public class FContentList extends ArrayList <String> {
         		 String sss = ss[i].trim();
         		 if(sss.length()> 0) add(sss);
         	}
-		//	Log.dbg("read_internal(): read "+ size() + " entries from " + file);
+			Log.dbg("read_internal(): read "+ size() + " entries from " + file);
         } catch (Exception e){ 
     		Log.err("exception in read_internal()");
         	e.printStackTrace(); 
@@ -186,9 +178,8 @@ public class FContentList extends ArrayList <String> {
 				continue;
 			}
 			String []ss = s.split("\t");
-			if(ss.length==2	&& (ss[1].charAt(0) == type || type == TYPE_Z))	a.add(new String(ss[0]));
 		}
-		// Log.dbg("get_array() returning " + a.size());
+		Log.dbg("get_array() returning " + a.size());
 		return a;
 	}
 }

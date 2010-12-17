@@ -8,9 +8,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
-import android.provider.BaseColumns;
 import android.provider.Contacts;
-import android.provider.ContactsContract;
 import android.provider.Contacts.PeopleColumns;
 import android.provider.Contacts.PhonesColumns;
 
