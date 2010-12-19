@@ -7,20 +7,12 @@
  <PreferenceCategory
    	android:title="@string/SGenPrefs">
   <CheckBoxPreference
-	android:key="foreground"
-    android:title="@string/FGServ" 
-    android:defaultValue="true"/>
-  <CheckBoxPreference
 	android:key="bootup"
     android:title="@string/SBootup" 
     android:defaultValue="false"/>
   <CheckBoxPreference
 	android:key="disable_notify"
     android:title="@string/DisNotify" 
-    android:defaultValue="false"/>
-  <CheckBoxPreference
-	android:key="autoanswer"
-    android:title="@string/SAA" 
     android:defaultValue="false"/>
   <ListPreference
 	android:key="format"
@@ -38,7 +30,7 @@
 		android:defaultValue="3"
 		android:title="@string/SDefaultOutAction"
 		android:entries="@array/OutCallActions"
-	    android:entryValues="@array/CallValues"
+	    android:entryValues="@array/OutCallValues"
 	    android:dialogTitle="@string/OutCalls" />
   	<Preference
 		android:key="edit_oelist"
@@ -52,22 +44,23 @@
 		android:defaultValue="1"
 		android:title="@string/SUnknownNum"
 		android:entries="@array/InCallActions"
-	    android:entryValues="@array/CallValues"
+	    android:entryValues="@array/InCallValues"
 	    android:dialogTitle="@string/UnknownNum" />
   	<ListPreference
 		android:key="numbers_in_contacts"
 		android:defaultValue="1"
 		android:title="@string/SContNum"
 		android:entries="@array/InCallActions"
-	    android:entryValues="@array/CallValues"
+	    android:entryValues="@array/InCallValues"
 	    android:dialogTitle="@string/ContNum" />
   	<ListPreference
 		android:key="numbers_not_in_contacts"
 		android:defaultValue="1"
 		android:title="@string/SNonContNum"
 		android:entries="@array/InCallActions"
-	    android:entryValues="@array/CallValues"
+	    android:entryValues="@array/InCallValues"
 	    android:dialogTitle="@string/NonContNum" />
+	
 	<PreferenceScreen
     	android:key="overrides_screen"
     	android:title="@string/SBL">
@@ -88,6 +81,27 @@
 			android:key="edit_ielist"
 			android:title="@string/SBExceptions"/>
   	</PreferenceScreen>
+  
+  	<PreferenceScreen
+    	android:key="aas_screen"
+    	android:title="@string/SAAF">
+  		<Preference
+			android:key="un_file"
+			android:title="@string/SUnknownNum"/>
+  		<Preference
+			android:key="cn_file"
+			android:title="@string/SContNum"/>
+  		<Preference
+			android:key="nc_file"
+			android:title="@string/SNonContNum"/>
+  		<Preference
+			android:key="ba_file"
+			android:title="@string/SABlist"/>
+  		<Preference
+			android:key="wa_file"
+			android:title="@string/SAWlist"/>
+  	</PreferenceScreen>
+
   </PreferenceCategory>
 
  <PreferenceCategory
@@ -149,7 +163,11 @@
   </PreferenceCategory>
 
   <PreferenceCategory
-    android:title="@string/SLoggingGroup">
+    android:title="@string/SDebuggingGroup">
+	<CheckBoxPreference
+		android:key="foreground"
+    	android:title="@string/FGServ" 
+    	android:defaultValue="true"/>
  	<CheckBoxPreference
 		android:key="logging"
 	    android:title="@string/SLogging" 
@@ -157,12 +175,10 @@
   	<Preference
 		android:key="delete_log"
 		android:title="@string/SRmLog"/>
-  
     <CheckBoxPreference
 		android:key="is_tattoo"
     	android:title="@string/STattooHack" 
     	android:defaultValue="false"/>
-  
   </PreferenceCategory>
   
 </PreferenceScreen>

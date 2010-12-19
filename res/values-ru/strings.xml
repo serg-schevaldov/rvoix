@@ -3,7 +3,7 @@
     
 <string name="app_name">rVoix</string>
 
-<string name="SBuild">rVoix: Версия 1.05 Сборка 20</string>
+<string name="SBuild">rVoix: Версия 1.05 Сборка 25</string>
 
 <string name="RRMode">Запустить сервис</string>
 <string name="Settings">Настройки</string>
@@ -50,6 +50,7 @@
 <item>Отключать звонок</item>
 <item>Всегда спрашивать</item>
 <item>Запуск вручную во время звонка</item>
+<item>Автоответ</item>
 </string-array>
 
 <string-array name="CallValues">
@@ -72,8 +73,6 @@
 <item>0</item>
 <item>1</item>
 </string-array>
-
-<string name="SAA">Автоответчик</string>
 
 <string name="AskRecCall">Записывать </string>
 
@@ -142,17 +141,21 @@
 
 <string name="SBL">Ч/Б списки и исключения</string>
 <string name="SBLMode">Режим Ч/Б списков</string>
+
 <string-array name="BlistArray">
 <item>0</item>
 <item>1</item>
 <item>2</item>
 <item>3</item>
+<item>4</item>
 </string-array>
+
 <string-array name="BlistActions">
 <item>Списки отключены</item>
 <item>Черный список</item>
 <item>Белый список: отбой др. звонков</item>
 <item>Белый список: откл. звука др. звонков</item>
+<item>Белый список: автоответ др. звонков</item>
 </string-array>
 
 <string name="SSelAll">Выбрать все</string>
@@ -206,7 +209,7 @@
 <string name="TNumAdded">Номер добавлен.</string>
 <string name="TNothingSelected">Ничего не выбрано.</string>
 
-<string name="SLoggingGroup">Отладочные опции</string>
+<string name="SDebuggingGroup">Отладочные опции</string>
 <string name="SLogging">Вести журнал звонков</string>
 <string name="SRmLog">Очистить журнал</string>
 <string name="STattooHack">Hack для Tattoo</string>
@@ -215,8 +218,16 @@
 <string name="SCantDeleteLogFile">Ошибка при удалении журнала</string>
 <string name="SLogCleared">Журнал очищен</string>
 
-
 <string name="SViewLog">Просмотреть журнал</string>
+
+<string name="SAA">Автоответ</string>
+<string name="SAAF">Файлы автоответа</string>
+
+<string name="SABlist">Номера из черного списка</string>
+<string name="SAWlist">Номера не из белого списка</string>
+
+<string name="SAANoFile">Файл не задан</string>
+<string name="SAASndFile">Выбор аудиофайла</string>
 
 </resources>
 

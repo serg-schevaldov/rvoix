@@ -21,8 +21,11 @@ public class Prefs extends PreferenceActivity
 	implements SharedPreferences.OnSharedPreferenceChangeListener {
 	
 	private boolean prefs_changed;
+	
 	public static final int BW_REQ_CODE = 22;
+	public static final int AA_REQ_CODE = 23;
 	private String fdir;
+	public 	static String fbPath = null;
 	
 	@Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,58 +70,28 @@ public class Prefs extends PreferenceActivity
 		String []iw = getResources().getStringArray(R.array.BlistActions);
 		m = (ListPreference) screen.findPreference("bmode");
 		int io = str2int(settings.getString("bmode", "0"));
-		if(io > 3) io = 0;
+		if(io > RVoixSrv.BMODE_WLIST_AA) io = RVoixSrv.BMODE_NONE;
 		m.setSummary(iw[io]);
+		
+		String []aa = {"edit_wlist","edit_blist","edit_ielist","edit_oelist"};
+		int []col = {FContentList.WMODE,FContentList.BMODE,FContentList.IEMODE,FContentList.OEMODE};
+		for(int i = 0; i < aa.length; i++) {
+			Preference p = screen.findPreference(aa[i]);
+			p.setSummary(getString((new File(fdir+FContentList.LIST_FILES[i])).exists() 
+		       		? R.string.SListActive : R.string.SListInactive));
+			set_pref_handler(p, "com.voix.BWList", col[i], BW_REQ_CODE);
+		}
 
-	       screen.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
-		Log.dbg("onCreate(): exit");
-        
-		Preference p;
-		p = screen.findPreference("edit_wlist");
-       	p.setSummary(getString((new File(fdir+FContentList.LIST_FILES[0])).exists() 
-       		? R.string.SListActive : R.string.SListInactive));
-       	p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-       		@Override
-       		public boolean onPreferenceClick(Preference preference) {
-       			Intent intent = new Intent().setClassName("com.voix", "com.voix.BWList");
-       			intent.putExtra("list_color", FContentList.WMODE);
-       			startActivityForResult(intent, BW_REQ_CODE);
-       			return false;
-       		}});
-       	p = screen.findPreference("edit_blist");
-       	p.setSummary(getString((new File(fdir+FContentList.LIST_FILES[1])).exists() 
-       			? R.string.SListActive : R.string.SListInactive));
-       	p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-       		@Override
-       		public boolean onPreferenceClick(Preference preference) {
-       			Intent intent = new Intent().setClassName("com.voix", "com.voix.BWList");
-       			intent.putExtra("list_color", FContentList.BMODE);
-       			startActivityForResult(intent, BW_REQ_CODE);
-       			return false;
-       		}});
-       	p = screen.findPreference("edit_ielist");
-       	p.setSummary(getString((new File(fdir+FContentList.LIST_FILES[2])).exists() 
-       			? R.string.SListActive : R.string.SListInactive));
-       	p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-       		@Override
-       		public boolean onPreferenceClick(Preference preference) {
-       			Intent intent = new Intent().setClassName("com.voix", "com.voix.BWList");
-       			intent.putExtra("list_color", FContentList.IEMODE);
-       			startActivityForResult(intent, BW_REQ_CODE);
-       			return false;
-       		}});
-       	p = screen.findPreference("edit_oelist");
-       	p.setSummary(getString((new File(fdir+FContentList.LIST_FILES[3])).exists() 
-       			? R.string.SListActive : R.string.SListInactive));
-       	p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
-       		@Override
-       		public boolean onPreferenceClick(Preference preference) {
-       			Intent intent = new Intent().setClassName("com.voix", "com.voix.BWList");
-       			intent.putExtra("list_color", FContentList.OEMODE);
-       			startActivityForResult(intent, BW_REQ_CODE);
-       			return false;
-       		}});
-
+		String []bb = {"un_file","cn_file","nc_file","ba_file","wa_file"};
+		for(int i = 0; i < bb.length; i++) {
+			String s = settings.getString(bb[i], null);
+			if(s == null || !(new File(s)).exists()) s = getString(R.string.SAANoFile);
+			else s = s.substring(20); // skip initial "/sdcard/voix/sounds/"
+			Preference p = screen.findPreference(bb[i]);
+			p.setSummary(s);
+			set_pref_handler(p, "com.voix.BWFilesBrowser", -1, AA_REQ_CODE+i);
+		}
+       	
        	final Preference pp = screen.findPreference("delete_log");
        	final File ff = new File(RVoixSrv.ServiceLogger.logfile);
        	final Context ctx = this;
@@ -139,8 +112,26 @@ public class Prefs extends PreferenceActivity
        			}
        			return false;
        		}});
+	    
+       	screen.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+		Log.dbg("onCreate(): exit");
+       	
 	}
 
+	private void set_pref_handler(Preference p, String cls, int col, int req) {
+       	final int color = col;
+       	final int req_code = req;
+       	final String cl = new String(cls);
+		p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+       		@Override
+       		public boolean onPreferenceClick(Preference preference) {
+       			Intent intent = new Intent().setClassName("com.voix", cl);
+       			intent.putExtra("list_color", color);
+       			startActivityForResult(intent, req_code);
+       			return false;
+       	}});
+	}
+	
     private int str2int(String s) { // won't use Integer.parseInt
 		if(s == null) return 0;
 		if(s.compareTo("1")==0) return 1;
@@ -148,6 +139,7 @@ public class Prefs extends PreferenceActivity
 		else if(s.compareTo("3")==0) return 3;
 		else if(s.compareTo("4")==0) return 4;
 		else if(s.compareTo("5")==0) return 5;
+		else if(s.compareTo("6")==0) return 6;
 		return 0;
 	}
 	
@@ -186,15 +178,33 @@ public class Prefs extends PreferenceActivity
 		   super.onActivityResult(requestCode, resultCode, data);
 		   Log.dbg("onActivityResult() code="+requestCode+", result="+resultCode);
 		   if(resultCode == 1) {
-			   prefs_changed = true;
-			   PreferenceScreen screen = getPreferenceScreen();
-			   Preference p;
-			   String[] lst = {"edit_wlist","edit_blist","edit_ielist","edit_oelist" };
-			   for(int i = 0; i < lst.length; i++) {
-				   p = screen.findPreference(lst[i]);
-				   p.setSummary(getString((new File(fdir+FContentList.LIST_FILES[i])).exists() 
+			   if(requestCode == BW_REQ_CODE) {
+				   prefs_changed = true;
+				   PreferenceScreen screen = getPreferenceScreen();
+				   Preference p;
+				   String[] lst = {"edit_wlist","edit_blist","edit_ielist","edit_oelist" };
+				   for(int i = 0; i < lst.length; i++) {
+			   			p = screen.findPreference(lst[i]);
+			   			p.setSummary(getString((new File(fdir+FContentList.LIST_FILES[i])).exists() 
 						   ? R.string.SListActive : R.string.SListInactive));
-			   }   
+			   		}   
+			   } else if(requestCode >= AA_REQ_CODE) {
+				   if(fbPath == null) return;
+				   String fname = "/sdcard/voix/sounds/"+fbPath;
+		           File f = new File(fname);
+		           if(!f.exists() || !f.canRead()) return;
+		           Log.dbg("user selected sound file: " + fname);
+				   prefs_changed = true;
+				   PreferenceScreen screen = getPreferenceScreen();
+				   String[] lst = {"un_file","cn_file","nc_file","ba_file","wa_file"};
+				   int i = requestCode - AA_REQ_CODE;
+				   Preference p = screen.findPreference(lst[i]);
+				   p.setSummary(fbPath);
+				   SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+				   SharedPreferences.Editor e = settings.edit();
+				   e.putString(lst[i], fname);
+				   e.commit();
+			   }
 			   java.lang.System.gc();
 			   setResult(1);
 		   }   

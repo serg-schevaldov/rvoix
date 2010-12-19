@@ -572,10 +572,10 @@ public class BWList extends ListActivity {
 	        flist.invalidateViews();
 	   } else if(requestCode == REQ_CODE_LOAD){	// load from file
 		   	if(fbPath == null) return;
-           	String fname = BWFilesBrowser.prefix+"/"+BWFilesBrowser.st[list_color]+fbPath;
+           	String fname = "/sdcard/voix/"+BWFilesBrowser.st[list_color]+fbPath;
            	File f = new File(fname);
            	if(!f.exists() || !f.canRead()) return;
-           	Log.msg("loading new list from " + fname);
+           	Log.dbg("loading new list from " + fname);
            	FContentList bwlist1 = new FContentList(fname, this);
            	bwlist1.read();
            	bwlist.clear();

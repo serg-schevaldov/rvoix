@@ -21,7 +21,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.media.AudioManager;
-import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.RemoteCallbackList;
@@ -36,19 +35,18 @@ public class RVoixSrv extends Service {
 		System.loadLibrary("lame");
 		System.loadLibrary("voix");
 	}
-	public static native int startRecord(String file, int bu, int bd);
+	
+    public static native int startRecord(String file, int bu, int bd);
 	public static native void stopRecord(int encoding_mode);
-	public static native void answerCall();
+	public static native void answerCall(String file);
 
 	// NB: The first two are also hard-coded in voix.c (passed in encoding_mode to startRecord) 
 	public static final int MODE_RECORD_WAV = 0;
 	public static final int MODE_RECORD_MP3 = 1;
-	public static final int MODE_AUTOANSWER = 2;
-	private int srv_mode = MODE_RECORD_WAV;
-	private int boost_up = 0;
-	private int boost_dn = 0;
 	
-	// NB: These are also hard-coded in prefs.xml through @array/CallValues
+	private int srv_mode = MODE_RECORD_WAV;
+	
+	// NB: These are also hard-coded in prefs.xml through @arrays [In/Out]CallValues
 	public static final int OUTGOING_REC_NONE = 0;
 	public static final int OUTGOING_REC_CONT = 1;
 	public static final int OUTGOING_REC_NCONT = 2;
@@ -61,62 +59,47 @@ public class RVoixSrv extends Service {
 	public static final int INCOMING_ACT_IGN = 3;
 	public static final int INCOMING_ACT_ASK = 4;
 	public static final int INCOMING_ACT_ASK_INCALL = 5;
+	public static final int INCOMING_ACT_AUTOANSWER = 6;
 	
 	private int unk_proc = INCOMING_ACT_REC;
 	private int cont_proc = INCOMING_ACT_REC;
 	private int ncont_proc = INCOMING_ACT_REC;
 	private int out_proc = OUTGOING_REC_ALL;
 
+	// NB: These are also hard-coded in prefs.xml
 	public static final int BMODE_NONE = 0;
 	public static final int BMODE_BLIST = 1;
 	public static final int BMODE_WLIST_HUP = 2;
 	public static final int BMODE_WLIST_IGN = 3;
-	private int bmode = BMODE_NONE;
+	public static final int BMODE_WLIST_AA = 4;
 		
+	private int bmode = BMODE_NONE;
+	
+	private static final int NOTIFY_ID = 1;
+	private int boost_up = 0;
+	private int boost_dn = 0;
 	private long min_out_time = 0;
 	private long start_time = 0;
 	private boolean min_out_confirm = true;
 	private int wait_confirm_result = 0; 
 	private boolean logging = false;
-	
 	private boolean disable_notifications = false;
 	
 	// If this is a foreground service, we also provide a status bar icon.
 	// Without it, the service seems to be killed for no reason after a lengthy period.
 	private boolean foreground = false;
 	
-	private CallReceiver cr = new CallReceiver();
-	private OutNumReceiver onr = new OutNumReceiver();
-	
+	private final CallReceiver cr = new CallReceiver();
+	private final OutNumReceiver onr = new OutNumReceiver();
+	private final Contix ctx = Contix.getContix();	
 	private static Telephony telephony = null;
 	private static PowerManager.WakeLock wakeLock = null;
 	private static AudioManager aman = null;
-	
-	private static final int NOTIFY_ID = 1;
-	public final Contix ctx = Contix.getContix();
-	
-	public static ArrayList <String> wlist = null; 
-	public static ArrayList <String> bmlist = null;
-	public static ArrayList <String> bhlist = null;
-	public static ArrayList <String> irlist = null;
-	public static ArrayList <String> ialist = null;
-	public static ArrayList <String> inlist = null;
-	public static ArrayList <String> iilist = null;
-	public static ArrayList <String> orlist = null;
-	public static ArrayList <String> oalist = null;
-	public static ArrayList <String> onlist = null;
-	public static ArrayList <String> oilist = null;
-	
-	private ArrayList <String> get_array(int mode, char type) {
-		FContentList fc = new FContentList(FContentList.LIST_FILES[mode],this);
-		fc.read();
-		return fc.get_array(type);
-	}
 	private static ServiceLogger log = null;
 	
 	@Override
    	public void onCreate() {
-        	Log.dbg("onCreate(): entry");
+			Log.dbg("onCreate(): entry");
 			super.onCreate();
 			
 			mNM = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
@@ -129,16 +112,16 @@ public class RVoixSrv extends Service {
 				mStartForeground = mStopForeground = null;
 			}
 			    
-			if(telephony == null) telephony = new Telephony();
+			telephony = new Telephony();
 			this.registerReceiver(cr, new IntentFilter(TelephonyManager.ACTION_PHONE_STATE_CHANGED));
 			this.registerReceiver(onr, new IntentFilter(Intent.ACTION_NEW_OUTGOING_CALL));
-            if(wakeLock == null) {
-                PowerManager pm = (PowerManager)getSystemService(Context.POWER_SERVICE);
-                wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, this.getClass().getName());
-                wakeLock.setReferenceCounted(false);
-            }
+
+			PowerManager pm = (PowerManager)getSystemService(Context.POWER_SERVICE);
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, this.getClass().getName());
+            wakeLock.setReferenceCounted(false);
+
             ctx.setContentResolver(getContentResolver());
-            if(aman == null)  aman = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            aman = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
             // is_tattoo = Build.MODEL.equals("HTC Tattoo");
             Log.dbg("onCreate(): exit");
 	}
@@ -155,28 +138,21 @@ public class RVoixSrv extends Service {
     }
 		
 	private boolean first_start = true;
-	static RVoixSrv ziz;	// dirty hack to simplify jni stuff
+	private static RVoixSrv ziz;	// dirty hack to simplify jni stuff
+
 	@Override
     public void onStart(Intent intent, int startId) {
 			Log.dbg("onStart(): entry");
 			if(foreground) stopForegroundCompat(NOTIFY_ID);
-			getPrefs(); ziz = this;
-			if(foreground) goForeground();
-			wlist  = get_array(FContentList.WMODE,FContentList.TYPE_NONE); 
-			bhlist = get_array(FContentList.BMODE,FContentList.TYPE_H);
-			bmlist = get_array(FContentList.BMODE,FContentList.TYPE_M);
-			irlist = get_array(FContentList.IEMODE,FContentList.TYPE_R);
-			ialist = get_array(FContentList.IEMODE,FContentList.TYPE_A);
-			inlist = get_array(FContentList.IEMODE,FContentList.TYPE_N);
-			iilist = get_array(FContentList.IEMODE,FContentList.TYPE_I);
-			orlist = get_array(FContentList.OEMODE,FContentList.TYPE_R);
-			oalist = get_array(FContentList.OEMODE,FContentList.TYPE_A);
-			onlist = get_array(FContentList.OEMODE,FContentList.TYPE_N);
-			oilist = get_array(FContentList.OEMODE,FContentList.TYPE_I);
-			Log.dbg("onStart(): exit");
+			ziz = this;
+			getPrefs(); 
+			cr.setup();
+			onr.setup();
 			first_start = false;
+			if(foreground) goForeground();
 			if(logging) log = new ServiceLogger();
 			else log = null;
+			Log.dbg("onStart(): exit");
 	}
 
 	public void goForeground() {
@@ -212,7 +188,6 @@ public class RVoixSrv extends Service {
 	public 	static boolean need_broadcast_record = false;
 	
 	public static boolean is_tattoo = false;
-	
 	
 	private void set_defaults() {
 		call_type = CType.UNKNOWN;
@@ -423,10 +398,38 @@ public class RVoixSrv extends Service {
 	}
 	
 	private String report = null;
+
+	private ArrayList <String> get_array(int mode, char type) {
+		FContentList fc = new FContentList(FContentList.LIST_FILES[mode],this);
+		fc.read();
+		return fc.get_array(type);
+	}
 	
-	// Receiver of outgoing calls
+	/////////////////////////////////////////////////////
+	////////// Receiver of outgoing calls
+	/////////////////////////////////////////////////////
+	
 	private class OutNumReceiver extends BroadcastReceiver {
+		
+		private ArrayList <String> orlist = null;
+		private ArrayList <String> oalist = null;
+		private ArrayList <String> onlist = null;
+		private ArrayList <String> oilist = null;
+
+		public void setup() {
+			orlist = get_array(FContentList.OEMODE,FContentList.TYPE_R);
+			oalist = get_array(FContentList.OEMODE,FContentList.TYPE_A);
+			onlist = get_array(FContentList.OEMODE,FContentList.TYPE_N);
+			oilist = get_array(FContentList.OEMODE,FContentList.TYPE_I);
+		}
+
 		private void check_overrides(String s) {
+			
+			if(orlist == null) orlist = get_array(FContentList.OEMODE,FContentList.TYPE_R);
+			if(oalist == null) oalist = get_array(FContentList.OEMODE,FContentList.TYPE_A);
+			if(onlist == null) onlist = get_array(FContentList.OEMODE,FContentList.TYPE_N);
+			if(oilist == null) oilist = get_array(FContentList.OEMODE,FContentList.TYPE_I);
+			
 			if(orlist.contains(s)) {	// overrides
 			   call_proc = OUTGOING_REC_ALL;
 			   Log.dbg("override: phone found in always record list");
@@ -445,15 +448,19 @@ public class RVoixSrv extends Service {
 			   if(report != null) report += " [in always incall list]";
 			}
 		}
-			
+		
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			   String s = intent.getStringExtra(Intent.EXTRA_PHONE_NUMBER);
 			   Log.dbg("onReceive(): " + s);
-			   if(log != null) {
-				   if(s != null) report = "Outgoing call to " + s;
-				   else report = "Outgoing call to [unknown]"; 
-			   } else report = null;
+			   if(!logging) { 
+				   report = null;
+			   } else {
+				   if(log == null || !log.can_write()) log = new ServiceLogger();
+				   if(!log.can_write()) report = null;
+				   else if(s != null) report = "Outgoing call to " + s;
+				   else report = "Outgoing call to [unknown]";
+			   }
 			   call_proc = out_proc;
 			   if(s != null) {
 				   String name = ctx.findInContacts(s);
@@ -491,9 +498,45 @@ public class RVoixSrv extends Service {
 		telephony.invoke("silenceRinger");
 	}
 	
-	// Receiver of phone state changes
+	/////////////////////////////////////////////////////
+	//////// Receiver of phone state changes
+	/////////////////////////////////////////////////////
 	private class CallReceiver extends BroadcastReceiver {
+		
 		private String lastFile = null;
+		
+		private String cn_file = null;
+		private String un_file = null;
+		private	String nc_file = null;
+		private	String ba_file = null;
+		private	String wa_file = null;
+		
+		private ArrayList <String> wlist = null; 
+		private ArrayList <String> bmlist = null;
+		private ArrayList <String> bhlist = null;
+		private ArrayList <String> balist = null;
+		private ArrayList <String> irlist = null;
+		private ArrayList <String> ialist = null;
+		private ArrayList <String> inlist = null;
+		private ArrayList <String> iilist = null;
+		
+		public void setup() {
+  			SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+			wlist  = get_array(FContentList.WMODE,FContentList.TYPE_NONE); 
+			bhlist = get_array(FContentList.BMODE,FContentList.TYPE_H);
+			bmlist = get_array(FContentList.BMODE,FContentList.TYPE_M);
+			balist = get_array(FContentList.BMODE,FContentList.TYPE_Q);
+			irlist = get_array(FContentList.IEMODE,FContentList.TYPE_R);
+			ialist = get_array(FContentList.IEMODE,FContentList.TYPE_A);
+			inlist = get_array(FContentList.IEMODE,FContentList.TYPE_N);
+			iilist = get_array(FContentList.IEMODE,FContentList.TYPE_I);
+			nc_file = settings.getString("nc_file", null);
+			cn_file = settings.getString("cn_file", null);
+			un_file = settings.getString("un_file", null);
+			ba_file = settings.getString("ba_file", null);
+			wa_file = settings.getString("wa_file", null);
+		}
+
 		@Override
 		public void onReceive(Context context, Intent intent) {
     	   	   String s = intent.getStringExtra(TelephonyManager.EXTRA_STATE);
@@ -501,25 +544,26 @@ public class RVoixSrv extends Service {
                
                if(s.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
            	   	
-            	    if(srv_mode == MODE_AUTOANSWER) {
-                	   	telephony.invoke("answerRingingCall");
-                	   	telephony.invoke("silenceRinger");
-                		answerCall();
-                		return;
-            	   	}
             	    s = intent.getStringExtra("incoming_number");
+
             	    if(recording) {
             	    	if(log != null) log.write("Incoming call from " + s + " while recording, will be merged to " +lastFile+" if accepted");
             	    	return;
             	    }
-            	    if(log == null) {
+            	    if(!logging) { 
             	    	report = null;
             	    } else {
-            	    	if(s != null) report = "Incoming call from "+s;
+            	    	if(log == null || !log.can_write()) log = new ServiceLogger();
+            	    	if(!log.can_write()) report = null;
+            	    	else if(s != null) report = "Incoming call from "+s;
             	    	else report = "Incoming call from <unknown>";
             	    }
-            	   	switch(bmode) {
+
+            	    switch(bmode) {
             	   		case BMODE_BLIST:
+            	   			if(bhlist == null) bhlist = get_array(FContentList.BMODE,FContentList.TYPE_H);
+                			if(bmlist == null) bmlist = get_array(FContentList.BMODE,FContentList.TYPE_M);
+                			if(balist == null) bmlist = get_array(FContentList.BMODE,FContentList.TYPE_Q);
             	   			if(s != null) {
             	   				if(bhlist.contains(s)) {
             	   				//	telephony.invoke("silenceRinger");
@@ -535,10 +579,19 @@ public class RVoixSrv extends Service {
             	   					if(report != null) log.write(report + ", blacklisted, muted");
             	   					return;
             	   				}
+            	   				if(balist.contains(s)) {
+   	                	   			if(ba_file == null) {
+   	                	   				SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+   	                	   				ba_file = sts.getString("ba_file", null);
+   	                	   			}
+   	                	   			auto_answer(ba_file);
+            	   					return;
+            	   				}
             	   				Log.msg(s + " not blacklisted, continue");
             	   			}
             	   			break;
             	   		case BMODE_WLIST_HUP:
+                    	    if(wlist == null) wlist  = get_array(FContentList.WMODE,FContentList.TYPE_NONE);
             	   			if(wlist.size()==0) break;
             	   			if(s == null || !wlist.contains(s)) {
             	   				//	telephony.invoke("silenceRinger");
@@ -553,6 +606,7 @@ public class RVoixSrv extends Service {
             	   			}
             	   			break;
             	   		case BMODE_WLIST_IGN:
+                    	    if(wlist == null) wlist  = get_array(FContentList.WMODE,FContentList.TYPE_NONE);
             	   			if(wlist.size()==0) break;
             	   			if(s == null || !wlist.contains(s)) {
             	   				shutup(); //telephony.invoke("silenceRinger");
@@ -561,6 +615,18 @@ public class RVoixSrv extends Service {
             	   					if(s != null) log.write(report + ", not in white list, muted");
             	   					else log.write(report + ", muted [in white list mode]");
             	   				}
+            	   				return;	
+            	   			}
+            	   			break;
+            	   		case BMODE_WLIST_AA:
+                    	    if(wlist == null) wlist  = get_array(FContentList.WMODE,FContentList.TYPE_NONE);
+            	   			if(wlist.size()==0) break;
+            	   			if(s == null || !wlist.contains(s)) {
+            	   				if(wa_file == null) {
+            	   					SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+   	                	   			wa_file = sts.getString("wa_file", null);
+   	                	   		}
+            	   				auto_answer(wa_file);
             	   				return;	
             	   			}
             	   			break;
@@ -581,6 +647,12 @@ public class RVoixSrv extends Service {
             	   			inc_number = new String(s);
             	   		}
             	   		Log.dbg("default call_proc = " + call_proc );
+
+            	   		if(irlist == null) irlist = get_array(FContentList.IEMODE,FContentList.TYPE_R);
+            	   		if(ialist == null) ialist = get_array(FContentList.IEMODE,FContentList.TYPE_A);
+            	   		if(inlist == null) inlist = get_array(FContentList.IEMODE,FContentList.TYPE_N);
+            	   		if(iilist == null) iilist = get_array(FContentList.IEMODE,FContentList.TYPE_I);
+            	   		
             	   		if(irlist.contains(s)) {	// overrides
             	   			call_proc = INCOMING_ACT_REC;
             	   			Log.dbg("phone found in always record list");
@@ -630,15 +702,39 @@ public class RVoixSrv extends Service {
    							ask_in_progress = true;
    							if(report != null) log.write(report + ", query user");
    							break;
+   						case INCOMING_ACT_AUTOANSWER:
+   	                	   	String aa_file = null;
+   	                	   	switch(call_type) {
+   	                	   		case INCOMING_NONUMBER:
+   	                	   			if(un_file == null) {
+   	                	   				SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+   	                	   				un_file = sts.getString("un_file", null);
+   	                	   			}
+   	                	   			aa_file = un_file; break;
+   	                	   		case INCOMING_CONT:
+   	                	   			if(cn_file == null) {
+   	                	   				SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+   	                	   				cn_file = sts.getString("cn_file", null);
+   	                	   			}
+   	                	   			aa_file = cn_file; break;
+   	                	   		case INCOMING_NCONT:
+   	                	   			if(nc_file == null) {
+   	                	   				SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+   	                	   				nc_file = sts.getString("nc_file", null);
+   	                	   			}
+   	                	   			aa_file = nc_file; break;
+   	                	   		default: break;	
+   	                	   	}
+   	                	   	auto_answer(aa_file);
+   	                		break;
 	   				}
 
                } else if(s.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
-            	   	
-            	   
-            	   	if(srv_mode == MODE_AUTOANSWER && out_number == null) return;
+
+            	   	if(call_proc == INCOMING_ACT_AUTOANSWER && out_number == null) return;
             	   	start_time = 0;
-            	   	
-        	   		switch(call_type) {
+        	   		
+            	   	switch(call_type) {
         	   			case OUTGOING_CONT:
         	   			case OUTGOING_NCONT:
         	   				if(call_proc == OUTGOING_REC_ALL) {
@@ -702,8 +798,8 @@ public class RVoixSrv extends Service {
        	    		
                } else if(s.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
             	   	
-            	   	if(srv_mode == MODE_AUTOANSWER && out_number == null) return;
-       	    		if(ask_incall_started || ask_in_progress) {
+            	   	if(call_proc == INCOMING_ACT_AUTOANSWER && out_number == null) return;
+            	   	if(ask_incall_started || ask_in_progress) {
        	    			Log.msg("stopping AskActivity");
        	    			broadcastActivities(CBack.DONE);
        	    			ask_incall_started = false; // for tattoo
@@ -747,8 +843,22 @@ public class RVoixSrv extends Service {
        	    		set_defaults();
                } 
 		}
+		private void auto_answer(String aa_file) {
+       	   	if(aa_file != null && (new File(aa_file)).exists()) {
+       	   		telephony.invoke("answerRingingCall");
+       	   		telephony.invoke("silenceRinger");
+       	   		answerCall(aa_file);
+       	   		Log.msg("number " + inc_number + ": call auto answered");
+       	   		if(report != null) log.write(report + ", auto answered");
+       	   	} else {
+       	   		Log.msg("number " + inc_number + ": auto answer skipped: no playback file");
+       	   		if(report != null) log.write(report + ", auto answer skipped: no playback file");
+       	   	}
+		}
 	}
-	
+
+	/////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////
 	private class WaitConfirm extends Thread {
 		private int tid = -1;
 		private String fname;
@@ -793,8 +903,9 @@ public class RVoixSrv extends Service {
 		}
 	}
 
-	
+	/////////////////////////////////////////////////////	
 	// Helper class to call internal telephony interface
+	///////////////////////////////////////////////////// 
 	private class Telephony {
 		private Object tel_mgr;
 		Telephony() {
@@ -822,16 +933,17 @@ public class RVoixSrv extends Service {
 	
 	
 	private void getPrefs(){
+		
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+		
 		foreground = settings.getBoolean("foreground", true);
 		disable_notifications = settings.getBoolean("disable_notify", false);
 		logging = settings.getBoolean("logging", false);
 		is_tattoo = settings.getBoolean("is_tattoo", false);
-		if(settings.getBoolean("autoanswer", false) == false) {
-			srv_mode = Integer.parseInt(settings.getString("format", "0"));
-		} else srv_mode = MODE_AUTOANSWER;
-	
+		min_out_confirm = settings.getBoolean("min_out_confirm", true);
+		
 		try {
+			srv_mode = Integer.parseInt(settings.getString("format", "0"));
 			boost_up = Integer.parseInt(settings.getString("boost_up", "0"));
 			boost_dn = Integer.parseInt(settings.getString("boost_dn", "0"));
 			out_proc = Integer.parseInt(settings.getString("outgoing_calls", "3"));
@@ -845,7 +957,6 @@ public class RVoixSrv extends Service {
 			Log.err("Error parsing preference values");
 			e.printStackTrace();
 		}
-		min_out_confirm = settings.getBoolean("min_out_confirm", true);
 	}
 	
 	class Fxx implements Comparable<Fxx>  {
@@ -1066,6 +1177,9 @@ public class RVoixSrv extends Service {
 				e.printStackTrace();
 				Log.err("exception in close");
 			}
+		}
+		boolean can_write() {
+			return writer != null;
 		}
 	}
 }
