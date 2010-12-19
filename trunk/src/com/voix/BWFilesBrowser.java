@@ -16,7 +16,6 @@ public class BWFilesBrowser extends ListActivity implements FilenameFilter	{
 	private int list_color = 0;
 	private String start = null;
 	private ArrayList<String> lines = new ArrayList<String>();
-	public static final String prefix = "/sdcard/voix";
 	public static final String[]st = {".wlist",".blist",".ilist",".olist"};
 	File [] files = null;
 
@@ -29,23 +28,36 @@ public class BWFilesBrowser extends ListActivity implements FilenameFilter	{
 	@Override
 	protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
-        Intent intie = getIntent();
-        list_color = intie.getIntExtra("list_color",0);
-        
-        Log.msg("onCreate(): " + list_color);
-        start =  st[list_color];
-		files = (new File(prefix)).listFiles(this);
-        if(files.length> 0) {
-			int k = prefix.length()+1+6;
-			for(int i=0; i < files.length; i++) {
-				String ss =files[i].toString().substring(k); 
-				if(!lines.contains(ss)) lines.add(ss);
-			}
-		} 
+
+        list_color = getIntent().getIntExtra("list_color",0);
+        Log.dbg("onCreate(): " + list_color);
+
+        if(list_color < 0) {
+        	String prefix = "/sdcard/voix/sounds";
+        	files = (new File(prefix)).listFiles();
+        	if(files.length> 0) {
+        		int k = prefix.length()+1;
+        		for(int i=0; i < files.length; i++) {
+        			String ss = files[i].toString().substring(k); 
+        			if(!lines.contains(ss)) lines.add(ss);
+        		}
+        	}
+        	setTitle(getString(R.string.SAASndFile));
+        } else { 
+        	String prefix = "/sdcard/voix";
+        	start =  st[list_color];
+        	files = (new File(prefix)).listFiles(this);
+        	if(files.length> 0) {
+        		int k = prefix.length()+1+6;
+        		for(int i=0; i < files.length; i++) {
+        			String ss =files[i].toString().substring(k); 
+        			if(!lines.contains(ss)) lines.add(ss);
+        		}
+        	} 
+    	    String []x = getResources().getStringArray(R.array.ListNames);
+    	    setTitle(x[list_color]);
+        }
         setContentView(R.layout.list);
-        
-	    String []x = getResources().getStringArray(R.array.ListNames);
-	    setTitle(x[list_color]);
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,R.layout.list_item_browser, R.id.label, lines);
         setListAdapter(adapter);
     }
@@ -54,9 +66,10 @@ public class BWFilesBrowser extends ListActivity implements FilenameFilter	{
 	public void onListItemClick(ListView p, View v, int pos, long id) { 
 		if(pos < lines.size()) {
 			String s = lines.get(pos);
-			Log.msg("New BWlist selected: " + s + ", pos=" +pos+ ", id=" + id);
-	        BWList.fbPath = s;
-	  		setResult(1);
+			Log.dbg("New BWlist selected: " + s + ", pos=" +pos+ ", id=" + id);
+	        if(list_color < 0) Prefs.fbPath = s;
+	        else BWList.fbPath = s;
+	        setResult(1);
 	        finish();
 		}
 	}

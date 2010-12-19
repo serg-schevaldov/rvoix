@@ -28,7 +28,6 @@
 
 #define READ_SIZE	(BUFFER_SIZE*2)		/* buffers of uint16_t's */
 #define OUT_DIR "/sdcard/voix"
-#define AA_FILE "/sdcard/voix/myvoice"
 #define RSZ		(16*1024)
 
 #define log_info(...)	__android_log_print(ANDROID_LOG_INFO, "com.voix",__VA_ARGS__)
@@ -502,15 +501,35 @@ static void *say_them(void *);
 (the phone rather hangs itself or reboots) *****/
 static void  call_java2hangup();
 
-void answer_call(JNIEnv* env, jobject obj) {
+static int aa_file = -1;
+
+void answer_call(JNIEnv* env, jobject obj, jstring jfile) {
+
     pthread_t pt;
+    const char *file = 0;
+	
 	log_info("in answer_call");
+
+        file = (*env)->GetStringUTFChars(env,jfile,NULL);
+        if(!file || !*file) {
+            (*env)->ReleaseStringUTFChars(env,jfile,file);
+            log_err("bad string from jni");
+            return;
+        }
+	aa_file = open(file, O_RDONLY);
+        if(aa_file < 0) {
+	    (*env)->ReleaseStringUTFChars(env,jfile,file);
+            log_err("cannot open auto answer sound file %s", file); 
+	    return;
+        }
+        (*env)->ReleaseStringUTFChars(env,jfile,file);
+
 	pthread_create(&pt,0,say_them,0);
 }
 
 static void *say_them(void *p) {
 
-    int  fd, aa_file;
+    int  fd;
     char *buff;
 
 	log_info("in say_them() thread");
@@ -519,19 +538,16 @@ static void *say_them(void *p) {
         if(fd < 0)  {
             fd = open("/dev/vocpcm3",O_RDWR);
             if(fd < 0) {
-                log_err("cannot open playback driver"); return 0;
+		close(aa_file); aa_file = -1;
+                log_err("cannot open playback driver"); 
+		return 0;
             }
         }
         if(ioctl(fd,VOCPCM_REGISTER_CLIENT,0) < 0) {
-            close(fd);
-            log_err("cannot register rpc client for playback"); return 0;
+            close(fd); close(aa_file); aa_file = -1;
+            log_err("cannot register rpc client for playback"); 
+	    return 0;
         }
-	aa_file = open(AA_FILE, O_RDONLY);
-	if(aa_file < 0) {
-            ioctl(fd,VOCPCM_UNREGISTER_CLIENT,0);
-            close(fd);
-            log_err("cannot open auto answer sound file " AA_FILE); return 0;
-	}
 
 	buff = (char *) malloc(BUFFER_SIZE);
 	memset(buff,0,BUFFER_SIZE);
@@ -546,13 +562,14 @@ static void *say_them(void *p) {
 	    i  = read(aa_file,buff,BUFFER_SIZE);
 	    if(i <= 0) break;
 	    m = write(fd,buff,i);
-	    log_info("read %d wrote %d", i, m);	
+	 //   log_info("read %d wrote %d", i, m);	
 	 //   if(m <= 0) break;
 	}
 
 //	ioctl(fd,VOCPCM_UNREGISTER_CLIENT,0);
         close(fd);
 	close(aa_file);
+	aa_file = -1;
 	free(buff);
         log_err("now hanging up in java");
 	call_java2hangup();
@@ -614,7 +631,7 @@ static const char *classPathName = "com/voix/RVoixSrv";
 static JNINativeMethod methods[] = {
   { "startRecord", "(Ljava/lang/String;II)I", (void *) start_record },
   { "stopRecord", "(I)V", (void *) stop_record },
-  { "answerCall", "()V", (void *) answer_call }
+  { "answerCall", "(Ljava/lang/String;)V", (void *) answer_call }
 };
 
 jint JNI_OnLoad(JavaVM* vm, void* reserved) {

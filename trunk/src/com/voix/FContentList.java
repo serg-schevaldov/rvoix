@@ -37,6 +37,7 @@ public class FContentList extends ArrayList <String> {
 	public static final char TYPE_A = 'a';	// ask
 	public static final char TYPE_N = 'n';	// don't record
 	public static final char TYPE_I = 'i';	// in-call record
+	public static final char TYPE_Q = 'q';	// auto answer
 	public static final char TYPE_Z = 'z';	// any type
 	
 	public static final String FAVS_FILE = "/sdcard/voix/.favourites";
@@ -186,7 +187,7 @@ public class FContentList extends ArrayList <String> {
 				continue;
 			}
 			String []ss = s.split("\t");
-			if(ss.length==2	&& (ss[1].charAt(0) == type || type == TYPE_Z))	a.add(new String(ss[0]));
+			if(ss.length >= 2 && (ss[1].charAt(0) == type || type == TYPE_Z)) a.add(new String(ss[0]));
 		}
 		// Log.dbg("get_array() returning " + a.size());
 		return a;
