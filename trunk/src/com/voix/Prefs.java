@@ -22,6 +22,7 @@ public class Prefs extends PreferenceActivity
 	
 	private boolean prefs_changed;
 	
+	public static final int RR_REQ_CODE = 21;
 	public static final int BW_REQ_CODE = 22;
 	public static final int AA_REQ_CODE = 23;
 	private String fdir;
@@ -82,12 +83,16 @@ public class Prefs extends PreferenceActivity
 			set_pref_handler(p, "com.voix.BWList", col[i], BW_REQ_CODE);
 		}
 
-		String []bb = {"un_file","cn_file","nc_file","ba_file","wa_file"};
+		String []bb = {"un_file","cn_file","nc_file","ba_file","wa_file","ea_file"};
 		for(int i = 0; i < bb.length; i++) {
-			String s = settings.getString(bb[i], null);
-			if(s == null || !(new File(s)).exists()) s = getString(R.string.SAANoFile);
-			else s = s.substring(20); // skip initial "/sdcard/voix/sounds/"
 			Preference p = screen.findPreference(bb[i]);
+			String s = settings.getString(bb[i], null);
+			if(s == null) s = getString(R.string.SAANoFile);
+			else if(!(new File(s)).exists()) { // user deleted the file
+				settings.edit().remove(bb[i]).commit();
+				s = getString(R.string.SAANoFile);
+			} else s = s.substring(20); // skip initial "/sdcard/voix/sounds/"
+
 			p.setSummary(s);
 			set_pref_handler(p, "com.voix.BWFilesBrowser", -1, AA_REQ_CODE+i);
 		}
@@ -112,6 +117,8 @@ public class Prefs extends PreferenceActivity
        			}
        			return false;
        		}});
+       	Preference p = screen.findPreference("new_rec");
+       	set_pref_handler(p, "com.voix.RecSndFile", 0, RR_REQ_CODE);
 	    
        	screen.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
 		Log.dbg("onCreate(): exit");
@@ -196,7 +203,7 @@ public class Prefs extends PreferenceActivity
 		           Log.dbg("user selected sound file: " + fname);
 				   prefs_changed = true;
 				   PreferenceScreen screen = getPreferenceScreen();
-				   String[] lst = {"un_file","cn_file","nc_file","ba_file","wa_file"};
+				   String[] lst = {"un_file","cn_file","nc_file","ba_file","wa_file","ea_file"};
 				   int i = requestCode - AA_REQ_CODE;
 				   Preference p = screen.findPreference(lst[i]);
 				   p.setSummary(fbPath);

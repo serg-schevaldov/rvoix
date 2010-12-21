@@ -3,7 +3,7 @@
     
 <string name="app_name">rVoix</string>
 
-<string name="SBuild">rVoix: Версия 1.05 Сборка 25</string>
+<string name="SBuild">rVoix: Версия 1.05 Сборка 70</string>
 
 <string name="RRMode">Запустить сервис</string>
 <string name="Settings">Настройки</string>
@@ -151,11 +151,11 @@
 </string-array>
 
 <string-array name="BlistActions">
-<item>Списки отключены</item>
+<item>Отключить ЧС/БС</item>
 <item>Черный список</item>
-<item>Белый список: отбой др. звонков</item>
-<item>Белый список: откл. звука др. звонков</item>
-<item>Белый список: автоответ др. звонков</item>
+<item>БС: отбой других</item>
+<item>БС: откл. звука</item>
+<item>БС: авоответ</item>
 </string-array>
 
 <string name="SSelAll">Выбрать все</string>
@@ -205,8 +205,12 @@
 <string name="SEdit1">Правка номера</string>
 <string name="SSelList">Выбор списка</string>
 
-<string name="TAlreadyPresent">Номер уже есть в списке.</string>
+<string name="TAlreadyPresent">Номер уже в списке.</string>
 <string name="TNumAdded">Номер добавлен.</string>
+<string name="TAlreadyPresents">уже в списке.</string>
+<string name="TNumsAdded">Добавлено номеров:</string>
+
+
 <string name="TNothingSelected">Ничего не выбрано.</string>
 
 <string name="SDebuggingGroup">Отладочные опции</string>
@@ -225,9 +229,28 @@
 
 <string name="SABlist">Номера из черного списка</string>
 <string name="SAWlist">Номера не из белого списка</string>
+<string name="SAElist">Номера в исключениях (вх.)</string>
 
+<string name="SAANew">Запись нового файла</string>
 <string name="SAANoFile">Файл не задан</string>
 <string name="SAASndFile">Выбор аудиофайла</string>
+
+<string name="SFDefaults">Файлы по умолчанию</string>
+
+<string name="SCantCreateSndDir">Ошибка создания "/sdcard/voix/sounds"</string>
+<string name="StartRecord">Начать запись</string>
+<string name="StopRecord">Остановить</string>
+<string name="SaveRecord">Сохранить</string>
+<string name="SQuit">Выйти</string>
+<string name="RecError">Ошибка записи</string>
+<string name="RecErrorInit">Ошибка инициализации записи</string>
+<string name="RecErrorSetup">Ошибка конфигурации</string>
+<string name="RecErrorWrite">Ошибка при записи</string>
+<string name="SNoFileName">Введите имя файла для сохранения</string>
+<string name="SFileNotSaved">Последняя запись не сохранена, продолжить?</string>
+<string name="SCantSave">Ошибка сохранения файла</string>
+<string name="SLastNotSaved">Последний файл не был сохранен!</string>
+
 
 </resources>
 

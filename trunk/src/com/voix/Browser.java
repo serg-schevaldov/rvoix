@@ -50,7 +50,6 @@ public class Browser extends ListActivity {
 	private boolean ac_search = false;
 	private boolean search_results = false;
 	private final ArrayList<String> ac_items = new ArrayList<String>();
-	private Context context = this;
 	
 	@Override
     public void onCreate(Bundle savedInstanceState) {
@@ -251,8 +250,7 @@ public class Browser extends ListActivity {
         	lpress = (int) k;
         	if(lpress >= recordings.size()) return false;
        	 	boolean fav = recordings.get(lpress).is_fav;
-       	 	boolean isnum  = recordings.get(lpress).fname.charAt(dirlen+12) == '+';
-       	 	ctxMenu(fav,isnum);
+       	 	ctxMenu(fav);
        	 	return true;
         }
    };
@@ -269,15 +267,21 @@ public class Browser extends ListActivity {
 	  }
    };
    
-   void ctxMenu(boolean isfav,boolean isnum) {	   
+   void ctxMenu(boolean isfav) {	   
 	   final Dialog dialog = new Dialog(this);
 	   final boolean fav = isfav;
-	   dialog.setContentView(fav ? R.layout.dialog_fav : 
-		   (isnum ? R.layout.dialog_phone : R.layout.dialog));
+	//  dialog.setContentView(fav ? R.layout.dialog_fav : 
+	//	   (isnum ? R.layout.dialog_phone : R.layout.dialog));
+	   
+	// dialog.setContentView(isnum ? R.layout.dialog_phone : R.layout.dialog);
+	   
+	   dialog.setContentView(R.layout.dialog_phone);
+	   
 	   dialog.setTitle(R.string.SAction);
 	   Button btn;
 	   Log.dbg("in ctxMenu()");
 	   btn = (Button) dialog.findViewById(R.id.ButtonMark);
+	   btn.setText(fav ? R.string.SUnMarkFav:R.string.SMarkFav);
 	   btn.setOnClickListener(new OnClickListener() {
    			public void onClick(View v) {
    				if(!fav) {
@@ -303,17 +307,13 @@ public class Browser extends ListActivity {
            }
 	   });
 	   
-	   if(isnum && !isfav) {
-		   ///////////////////////////////////////////
-		   ///////////////////////////////////////////
-		   btn = (Button) dialog.findViewById(R.id.ButtonBlack);
-		   btn.setOnClickListener(new OnClickListener() {
-	           public void onClick(View v) {
-	        	   dialog.dismiss();
-	        	   add_to_list();
-	           }
-		   });
-	   }
+	   btn = (Button) dialog.findViewById(R.id.ButtonBlack);
+	   btn.setOnClickListener(new OnClickListener() {
+           public void onClick(View v) {
+        	   dialog.dismiss();
+        	   add_to_list();
+           }
+	   });
 	   
 	   btn = (Button) dialog.findViewById(R.id.ButtonFilter);
 	   if(filter == null) btn.setOnClickListener(new OnClickListener() {
@@ -367,8 +367,8 @@ public class Browser extends ListActivity {
            }
 	   });
 	   
+	   btn = (Button) dialog.findViewById(R.id.ButtonDelete);
 	   if(!fav) {
-	   		btn = (Button) dialog.findViewById(R.id.ButtonDelete);
 	   		btn.setOnClickListener(new OnClickListener() {
 	   			public void onClick(View v) {
 	   				Log.dbg("click on delete");
@@ -380,7 +380,7 @@ public class Browser extends ListActivity {
 	   				setResult(1);
 	   			}
 	   		});
-	   }
+	   } else btn.setEnabled(false);
 	   dialog.show();
    }
    @Override	
@@ -389,8 +389,10 @@ public class Browser extends ListActivity {
 	   Log.dbg("onActivityResult() code="+requestCode+", result=" +resultCode);
 	   resetAdapter(requestCode == 2 || resultCode == 1);
    }
-   /////////////////////// Helper functions
-	String trim(String file, long sz) {
+   
+/////////////////////// Helper functions
+   @SuppressWarnings("boxing")
+   String trim(String file, long sz) {
 		String s;
 		long size = sz;
 		try {
@@ -533,7 +535,8 @@ public class Browser extends ListActivity {
 		btn.setOnClickListener(new OnClickListener() {
 			public void onClick(View v) {
 				dialog.dismiss(); list_color = color;
-				select_type_and_proceed();
+				if(list_color == FContentList.WMODE) insert_to_list();
+				else select_type_and_proceed();
 			}
 		});
 	}
@@ -556,7 +559,7 @@ public class Browser extends ListActivity {
 		});
 		dialog.show();
     }
-    Context ctx;
+
     private void set_button2(Dialog dlg, int id, char t) {
 		final Button btn = (Button) dlg.findViewById(id);
 		final char type = t;
@@ -565,7 +568,6 @@ public class Browser extends ListActivity {
 			public void onClick(View v) {
 				dialog.dismiss();
 				selected_type = type;
-				ctx = getBaseContext();
 				insert_to_list();
 			}
 		});
@@ -581,6 +583,7 @@ public class Browser extends ListActivity {
 			dialog.setTitle(R.string.SOverType);
 			set_button2(dialog, R.id.ButtonH, FContentList.TYPE_H);
 			set_button2(dialog, R.id.ButtonM, FContentList.TYPE_M);
+			
 		} else {
 			dialog.setContentView(R.layout.dialog_over_type);
 			dialog.setTitle(R.string.SOverType);
@@ -588,7 +591,10 @@ public class Browser extends ListActivity {
 			set_button2(dialog, R.id.ButtonA, FContentList.TYPE_A);
 			set_button2(dialog, R.id.ButtonN, FContentList.TYPE_N);
 			set_button2(dialog, R.id.ButtonI, FContentList.TYPE_I);
-		}
+		}	
+		if(list_color == FContentList.OEMODE) dialog.findViewById(R.id.ButtonQ).setEnabled(false);
+		else set_button2(dialog, R.id.ButtonQ, FContentList.TYPE_Q);
+		
 		btn = (Button) dialog.findViewById(R.id.ButtonCancel);
 		btn.setOnClickListener(new OnClickListener() {
            public void onClick(View v) {
@@ -598,33 +604,64 @@ public class Browser extends ListActivity {
 		dialog.show();
 	}
     private void insert_to_list() {
-    	FContentList fc = new FContentList(FContentList.LIST_FILES[list_color],context);
- 	   	String number = recordings.get(lpress).fname.substring(dirlen+12);
- 	   	number = number.substring(0, number.length()-4);
- 	   	number = cut_chunk(number); 
+    	FContentList fc = new FContentList(FContentList.LIST_FILES[list_color],this);
+ 	   	int items_added = 0;    	
  	   	fc.read();
  	   	char tt = list_color != FContentList.WMODE ? FContentList.TYPE_Z : FContentList.TYPE_NONE;
  	   	ArrayList <String> a = fc.get_array(tt);
- 	   	if(!a.contains(number)) {
- 	   		Log.msg("Addnig " + number + " to list " + list_color);
- 	   		if(list_color != FContentList.WMODE) number = number + '\t'+selected_type; 
- 	   		fc.add(number);
- 	   		fc.write();
- 	   		Toast.makeText(this, R.string.TNumAdded, Toast.LENGTH_SHORT).show();
- 	   		ActivityManager am = (ActivityManager)context.getSystemService(ACTIVITY_SERVICE);  
+
+ 	   	String number = recordings.get(lpress).fname.substring(dirlen+13);
+ 	   	number = number.substring(0, number.length()-4);
+ 	   	number = cut_chunk(number); 
+ 	   	Contix ctxx = Contix.getContix();
+ 	   	ctxx.setContentResolver(getContentResolver());
+ 	   	ArrayList<String>numbers =ctxx.getAllPhones(number); 
+ 	   	int nn = numbers.size();
+ 	   	if(nn > 0) {	// in contacts
+ 	   		for(int i= 0; i < nn; i++) 
+ 	   			items_added += insert_single_number(numbers.get(i),a,fc);
+ 	   		if(nn==1) {
+ 	   			Toast.makeText(this, items_added == 1 ? 
+ 	   				R.string.TNumAdded : R.string.TAlreadyPresent, Toast.LENGTH_SHORT).show();
+ 	   		} else {
+ 	   			String ss = getString(R.string.TNumsAdded) + " " + items_added;
+ 	   			if(items_added < nn) 
+ 	   				ss += ", " + (nn-items_added) + " " + getString(R.string.TAlreadyPresents); 
+ 	   			Toast.makeText(this, ss, Toast.LENGTH_LONG).show();
+ 	   		}
+ 	   	} else {		// this must be a number
+ 	   		number = recordings.get(lpress).fname.substring(dirlen+12);
+ 	 	   	number = number.substring(0, number.length()-4);
+ 	 	   	number = cut_chunk(number); 
+ 	   		items_added += insert_single_number(number,a,fc);
+ 	   		Toast.makeText(this, items_added == 1 ? 
+	 	   			R.string.TNumAdded : R.string.TAlreadyPresent, Toast.LENGTH_SHORT).show();
+ 	   	}
+ 	   	if(items_added > 0) {
+ 	   		ActivityManager am = (ActivityManager) this.getSystemService(ACTIVITY_SERVICE);  
  	   		List<ActivityManager.RunningServiceInfo> ls = am.getRunningServices(1000);
  	   		for(int i = 0; i < ls.size(); i++) {
 			   if(ls.get(i).process.compareTo("com.voix:remote")==0) {
 				   Intent intent = new Intent().setClassName("com.voix", "com.voix.RVoixSrv");
-				   if(startService(intent)!= null) Log.msg("service restarted");
+				   if(startService(intent)!= null) Log.dbg("service restarted");
 				   break;
 			   }
  	   		}
- 	   	} else {
- 	   		Log.msg("Number " + number + " already present in the list.");
- 	   		Toast.makeText(ctx, R.string.TAlreadyPresent, Toast.LENGTH_SHORT).show();
- 	   	}
+ 	   	}	
     }
+
+    private int insert_single_number(String num, ArrayList <String> a, FContentList fc) {
+ 	   	String number = new String(num);
+    	if(!a.contains(number)) {
+ 	   		Log.dbg("Addnig " + number + " to list " + list_color);
+ 	   		if(list_color != FContentList.WMODE) number = number + '\t'+selected_type; 
+ 	   		fc.add(number);
+ 	   		fc.write();
+ 	   		return 1;
+    	} 
+    	return 0;
+    }
+
 }
 
 

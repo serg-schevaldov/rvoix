@@ -6,10 +6,13 @@ import java.util.ArrayList;
 
 import android.app.ListActivity;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.AdapterView.OnItemLongClickListener;
 
 public class BWFilesBrowser extends ListActivity implements FilenameFilter	{
 	
@@ -58,6 +61,10 @@ public class BWFilesBrowser extends ListActivity implements FilenameFilter	{
     	    setTitle(x[list_color]);
         }
         setContentView(R.layout.list);
+        if(list_color < 0) {
+        	ListView flist = (ListView) findViewById(android.R.id.list);
+        	flist.setOnItemLongClickListener(longClick);
+        }
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,R.layout.list_item_browser, R.id.label, lines);
         setListAdapter(adapter);
     }
@@ -66,11 +73,25 @@ public class BWFilesBrowser extends ListActivity implements FilenameFilter	{
 	public void onListItemClick(ListView p, View v, int pos, long id) { 
 		if(pos < lines.size()) {
 			String s = lines.get(pos);
-			Log.dbg("New BWlist selected: " + s + ", pos=" +pos+ ", id=" + id);
 	        if(list_color < 0) Prefs.fbPath = s;
 	        else BWList.fbPath = s;
 	        setResult(1);
 	        finish();
 		}
 	}
+	AdapterView.OnItemLongClickListener longClick= new OnItemLongClickListener() {
+        public boolean onItemLongClick(AdapterView<?> a, View v, int i, long k) {
+       	 	Log.dbg("long click detected");
+        	int lpress = (int) k;
+        	if(lpress >= lines.size()) return false;
+        	String f = lines.get(lpress);
+        	Intent intie = new Intent(Intent.ACTION_VIEW); 
+        	intie.setDataAndType(Uri.fromFile(new File("/sdcard/voix/sounds"+f)), "audio/wav");
+        	Log.msg("start playing " + f);
+        	startActivity(intie);
+        	return true;
+        }
+   };
+
+	
 }

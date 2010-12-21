@@ -411,11 +411,13 @@ public class RVoixSrv extends Service {
 	
 	private class OutNumReceiver extends BroadcastReceiver {
 		
-		private ArrayList <String> orlist = null;
-		private ArrayList <String> oalist = null;
-		private ArrayList <String> onlist = null;
-		private ArrayList <String> oilist = null;
+		// Phone lists 
+		private ArrayList <String> orlist = null;	//	outgoing/always record	
+		private ArrayList <String> oalist = null;	//	outgoing/always ask
+		private ArrayList <String> onlist = null;	//	outgoing/always skip
+		private ArrayList <String> oilist = null;	//	outgoing/always ask in-call
 
+		// called from onStart()
 		public void setup() {
 			orlist = get_array(FContentList.OEMODE,FContentList.TYPE_R);
 			oalist = get_array(FContentList.OEMODE,FContentList.TYPE_A);
@@ -505,36 +507,43 @@ public class RVoixSrv extends Service {
 		
 		private String lastFile = null;
 		
-		private String cn_file = null;
-		private String un_file = null;
-		private	String nc_file = null;
-		private	String ba_file = null;
-		private	String wa_file = null;
+		// Auto-answer sound files
+		private String cn_file = null;	//	for contacts
+		private String un_file = null;	//	for unknown numbers
+		private	String nc_file = null;	//	for non-contacts
+		private	String ba_file = null;	//	for blacklisted numbers
+		private	String wa_file = null;	//	for non-whitelisted numbers
+		private	String ea_file = null;	//	for incoming exceptions
 		
-		private ArrayList <String> wlist = null; 
-		private ArrayList <String> bmlist = null;
-		private ArrayList <String> bhlist = null;
-		private ArrayList <String> balist = null;
-		private ArrayList <String> irlist = null;
-		private ArrayList <String> ialist = null;
-		private ArrayList <String> inlist = null;
-		private ArrayList <String> iilist = null;
+		// Phone lists
+		private ArrayList <String> wlist = null; 	//	white list
+		private ArrayList <String> bmlist = null;	//	blacklist/mute
+		private ArrayList <String> bhlist = null;	//	blacklist/hang-up
+		private ArrayList <String> bqlist = null;	//	blacklist/auto-answer
+		private ArrayList <String> irlist = null;	// 	incoming/always record
+		private ArrayList <String> ialist = null;	//	incoming/always ask
+		private ArrayList <String> inlist = null;	//	incoming/always do nothing
+		private ArrayList <String> iilist = null;	//	incoming/always process in-call
+		private ArrayList <String> iqlist = null;	//	incoming/always auto-answer
 		
+		// called from onStart()
 		public void setup() {
   			SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
 			wlist  = get_array(FContentList.WMODE,FContentList.TYPE_NONE); 
 			bhlist = get_array(FContentList.BMODE,FContentList.TYPE_H);
 			bmlist = get_array(FContentList.BMODE,FContentList.TYPE_M);
-			balist = get_array(FContentList.BMODE,FContentList.TYPE_Q);
+			bqlist = get_array(FContentList.BMODE,FContentList.TYPE_Q);
 			irlist = get_array(FContentList.IEMODE,FContentList.TYPE_R);
 			ialist = get_array(FContentList.IEMODE,FContentList.TYPE_A);
 			inlist = get_array(FContentList.IEMODE,FContentList.TYPE_N);
 			iilist = get_array(FContentList.IEMODE,FContentList.TYPE_I);
+			iqlist = get_array(FContentList.IEMODE,FContentList.TYPE_Q);
 			nc_file = settings.getString("nc_file", null);
 			cn_file = settings.getString("cn_file", null);
 			un_file = settings.getString("un_file", null);
 			ba_file = settings.getString("ba_file", null);
 			wa_file = settings.getString("wa_file", null);
+			ea_file = settings.getString("ea_file", null);
 		}
 
 		@Override
@@ -563,7 +572,7 @@ public class RVoixSrv extends Service {
             	   		case BMODE_BLIST:
             	   			if(bhlist == null) bhlist = get_array(FContentList.BMODE,FContentList.TYPE_H);
                 			if(bmlist == null) bmlist = get_array(FContentList.BMODE,FContentList.TYPE_M);
-                			if(balist == null) bmlist = get_array(FContentList.BMODE,FContentList.TYPE_Q);
+                			if(bqlist == null) bqlist = get_array(FContentList.BMODE,FContentList.TYPE_Q);
             	   			if(s != null) {
             	   				if(bhlist.contains(s)) {
             	   				//	telephony.invoke("silenceRinger");
@@ -579,7 +588,7 @@ public class RVoixSrv extends Service {
             	   					if(report != null) log.write(report + ", blacklisted, muted");
             	   					return;
             	   				}
-            	   				if(balist.contains(s)) {
+            	   				if(bqlist.contains(s)) {
    	                	   			if(ba_file == null) {
    	                	   				SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
    	                	   				ba_file = sts.getString("ba_file", null);
@@ -652,6 +661,7 @@ public class RVoixSrv extends Service {
             	   		if(ialist == null) ialist = get_array(FContentList.IEMODE,FContentList.TYPE_A);
             	   		if(inlist == null) inlist = get_array(FContentList.IEMODE,FContentList.TYPE_N);
             	   		if(iilist == null) iilist = get_array(FContentList.IEMODE,FContentList.TYPE_I);
+            	   		if(iqlist == null) iilist = get_array(FContentList.IEMODE,FContentList.TYPE_Q);
             	   		
             	   		if(irlist.contains(s)) {	// overrides
             	   			call_proc = INCOMING_ACT_REC;
@@ -669,6 +679,31 @@ public class RVoixSrv extends Service {
             	   			call_proc = INCOMING_ACT_ASK_INCALL;
             	   			Log.dbg("phone found in always ask in-call list");
             	   			if(report != null) report += " [in always incall list]";
+            	   		} else if(iqlist.contains(s)) {
+            	   			call_proc = INCOMING_ACT_AUTOANSWER;
+            	   			Log.dbg("phone found in always autoanswer list");
+            	   			if(report != null) report += " [in always a/a list]";
+               	   			String aa_file = "/sdcard/voix/sounds/" + s;
+            	   			if((new File(aa_file)).exists()) {
+            	   				if(report != null) report += ", "+aa_file+" found";
+            	   				auto_answer(aa_file);
+                   	   			return;
+            	   			}
+            	   			if((new File(aa_file+".wav")).exists()) {
+            	   				if(report != null) report += ", "+aa_file+".wav found";
+            	   				auto_answer(aa_file+".wav");
+                   	   			return;
+            	   			}
+            	   			if(ea_file == null) {
+               	   				SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+               	   				ea_file = sts.getString("ea_file", null);
+               	   			}
+            	   			if(ea_file != null) {
+            	   				auto_answer(ea_file);
+            	   				return;
+            	   			}
+            	   			if(report != null) report += ", no sound file for "+s+", trying default";
+            	   			// fall through to default sound file 
             	   		}
             	   		Log.dbg("effective call_proc after lists = " + call_proc );
             	   	} else {

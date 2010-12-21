@@ -85,6 +85,11 @@
   	<PreferenceScreen
     	android:key="aas_screen"
     	android:title="@string/SAAF">
+  	  <Preference
+			android:key="new_rec"
+			android:title="@string/SAANew"/>
+	  <PreferenceCategory
+    	android:title="@string/SFDefaults">
   		<Preference
 			android:key="un_file"
 			android:title="@string/SUnknownNum"/>
@@ -100,6 +105,10 @@
   		<Preference
 			android:key="wa_file"
 			android:title="@string/SAWlist"/>
+  		<Preference
+			android:key="ea_file"
+			android:title="@string/SAElist"/>
+  	  </PreferenceCategory>
   	</PreferenceScreen>
 
   </PreferenceCategory>

@@ -37,7 +37,6 @@ public class BWList extends ListActivity {
 	private ListView flist;
 	public 	static String fbPath = null;
 	private int list_color = 0; 
-	private Context cntx;
 		
 	private class ListLine implements Comparable<ListLine> {
 		public String dname;
@@ -90,6 +89,9 @@ public class BWList extends ListActivity {
 				case FContentList.TYPE_R:
 					img_res = R.drawable.rec;
 					break;
+				case FContentList.TYPE_Q:
+					img_res = R.drawable.aa;
+					break;
 				case FContentList.TYPE_A:
 					img_res = R.drawable.ask;
 					break;
@@ -131,7 +133,6 @@ public class BWList extends ListActivity {
         flist.setOnScrollListener(sScr);
         
         fbPath = null;
-        cntx = this;
         
         Log.dbg("onCreate(): exit");
 	}
@@ -220,10 +221,16 @@ public class BWList extends ListActivity {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.bwmenu, menu);
         Log.dbg("onCreateOptionsMenu()");
+        if(list_color == FContentList.WMODE) menu.findItem(R.id.ChangeType).setEnabled(false);
         return true;
     }
 	private final int REQ_CODE_LOAD	= 11;
 	private final int REQ_CODE_CONT = 12;
+	
+	private final int PROCEED_CALL_CONTS = 0;
+	private final int PROCEED_INPUT0 = 1;
+	private final int PROCEED_CHG_ONE = 2;
+	private final int PROCEED_CHG_SEL = 3;
 	
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
@@ -247,12 +254,22 @@ public class BWList extends ListActivity {
 				if(kk > 0) {
 					adapter = new ListLineAdapter(this);
 					setListAdapter(adapter);
+					flist.setSelection(firstVisible);
 				} else Toast.makeText(this, R.string.TNothingSelected, Toast.LENGTH_SHORT).show();
+				return true;
+			case R.id.ChangeType:
+				for(int i = 0; i < lines.size(); i++) {
+					if(lines.get(i).selected) {
+						select_type_and_proceed(PROCEED_CHG_SEL);
+						return true;
+					}
+				}
+				Toast.makeText(this, R.string.TNothingSelected, Toast.LENGTH_SHORT).show();
 				return true;
 			case R.id.AddFromContacts:
 				if(bwlist.dirty) saveBWlist();
 				if(list_color > FContentList.WMODE) {
-					select_type_and_proceed(0);
+					select_type_and_proceed(PROCEED_CALL_CONTS);
 				} else {
 					Intent intent = new Intent().setClassName("com.voix", "com.voix.ContSel");
 					intent.putExtra("list_color", list_color);
@@ -261,9 +278,8 @@ public class BWList extends ListActivity {
 				}	
 				return true;
 			case R.id.AddManually:
-				if(list_color > FContentList.WMODE) {
-					select_type_and_proceed(1);
-				} else input_dialog(0);
+				if(list_color > FContentList.WMODE) select_type_and_proceed(PROCEED_INPUT0);
+				else input_dialog(0);
 				return true;
 			case R.id.SaveList:
 				input_dialog(1);
@@ -278,7 +294,7 @@ public class BWList extends ListActivity {
 		return false; 
 	}
 	
-	private char selected_type = 0;
+	private char selected_type = FContentList.TYPE_NONE;
 
 	private void callContSel() {
 		Log.dbg("callContSel()");
@@ -288,86 +304,102 @@ public class BWList extends ListActivity {
 		startActivityForResult(intent, REQ_CODE_CONT);
 	}
 	
-	private void chtype(View v) {
-		Log.dbg("changed exception type to " + selected_type);
+	private void ch_type_lpressed() {
+		if(selected_type == FContentList.TYPE_NONE) return;
 		lines.get(lpress).type = selected_type;
 		bwlist.dirty = true;
-		//v.invalidate();
  	   	flist.invalidateViews();
 	}
+
+	private void ch_type_selected() {
+		if(selected_type == FContentList.TYPE_NONE) return;
+		int qq = 0;
+		for(int i = 0; i < lines.size(); i++) {
+			if(lines.get(i).selected) {
+				lines.get(i).type = selected_type;
+				lines.get(i).selected = false;
+				qq++;
+			}
+		}
+		if(qq > 0) {
+			bwlist.dirty = true;
+			adapter = new ListLineAdapter(this);
+			setListAdapter(adapter);
+			flist.setSelection(firstVisible);
+		} else Toast.makeText(this, R.string.TNothingSelected, Toast.LENGTH_SHORT).show();
+	}
 	
-	private void select_type_and_proceed(int id) {	   
+
+	private void set_chtype_listener(Dialog dlg, Button b, char t, int proc_type) {
+		final Dialog dialog = dlg;
+		final char type = t;
+		final int id = proc_type;
+
+		b.setOnClickListener(new OnClickListener() {
+			public void onClick(View v) {
+				dialog.dismiss(); selected_type = type;
+				Log.dbg("Selected type: " + type);
+				switch(id) {
+					case PROCEED_CALL_CONTS: 	
+						callContSel();
+						break;
+					case PROCEED_INPUT0:
+						input_dialog(0);
+						break;
+					case PROCEED_CHG_ONE:
+						ch_type_lpressed();
+						break;
+					case PROCEED_CHG_SEL:
+						ch_type_selected();
+						break;
+					default:
+						break;
+				}
+			}
+		});
+	}
+	
+	private void select_type_and_proceed(int proc_type) {	   
 
 		final Dialog dialog = new Dialog(this);
-		final int this_id = id;
 		Button btn;
+		final int id = proc_type;
 	
-		selected_type = 0;
+		selected_type = FContentList.TYPE_NONE;
 		
 		if(list_color == FContentList.BMODE) {
 			dialog.setContentView(R.layout.dialog_bk_type);
 			dialog.setTitle(R.string.SOverType);
 			
 			btn = (Button) dialog.findViewById(R.id.ButtonH);
-			btn.setOnClickListener(new OnClickListener() {
-				public void onClick(View v) {
-					dialog.dismiss(); selected_type = FContentList.TYPE_H;
-					if(this_id == 1) input_dialog(0);
-					else if(this_id == 2) chtype(v);
-					else callContSel();
-				}
-			});
+			set_chtype_listener(dialog,btn,FContentList.TYPE_H, id);
+
 			btn = (Button) dialog.findViewById(R.id.ButtonM);
-			btn.setOnClickListener(new OnClickListener() {
-				public void onClick(View v) {
-					dialog.dismiss(); selected_type = FContentList.TYPE_M;
-					if(this_id == 1) input_dialog(0);
-					else if(this_id == 2) chtype(v);
-					else callContSel();
-				}
-			});
+			set_chtype_listener(dialog,btn,FContentList.TYPE_M, id);
+
 		} else {
 			
 			dialog.setContentView(R.layout.dialog_over_type);
-			dialog.setTitle(R.string.SOverType);
+			dialog.setTitle(R.string.SChtype);
 			
 			btn = (Button) dialog.findViewById(R.id.ButtonR);
-			btn.setOnClickListener(new OnClickListener() {
-				public void onClick(View v) {
-					dialog.dismiss(); selected_type = FContentList.TYPE_R;
-					if(this_id == 1) input_dialog(0);
-					else if(this_id == 2) chtype(v);
-					else callContSel();
-				}
-			});
+			set_chtype_listener(dialog,btn,FContentList.TYPE_R, id);
+
 			btn = (Button) dialog.findViewById(R.id.ButtonA);
-			btn.setOnClickListener(new OnClickListener() {
-				public void onClick(View v) {
-					dialog.dismiss(); selected_type = FContentList.TYPE_A;
-					if(this_id == 1) input_dialog(0);
-					else if(this_id == 2) chtype(v);
-					else callContSel();
-				}
-			});
+			set_chtype_listener(dialog,btn,FContentList.TYPE_A, id);
+
 			btn = (Button) dialog.findViewById(R.id.ButtonN);
-			btn.setOnClickListener(new OnClickListener() {
-				public void onClick(View v) {
-					dialog.dismiss(); selected_type = FContentList.TYPE_N;
-					if(this_id == 1) input_dialog(0);
-					else if(this_id == 2) chtype(v);
-					else callContSel();
-				}
-			});
+			set_chtype_listener(dialog,btn,FContentList.TYPE_N, id);
+
 			btn = (Button) dialog.findViewById(R.id.ButtonI);
-			btn.setOnClickListener(new OnClickListener() {
-				public void onClick(View v) {
-					dialog.dismiss(); selected_type = FContentList.TYPE_I;
-					if(this_id == 1) input_dialog(0);
-					else if(this_id == 2) chtype(v);
-					else callContSel();
-				}
-			});
+			set_chtype_listener(dialog,btn,FContentList.TYPE_I, id);
 		}
+		
+		btn = (Button) dialog.findViewById(R.id.ButtonQ);
+		if(list_color == FContentList.BMODE || list_color == FContentList.IEMODE) {
+			set_chtype_listener(dialog,btn,FContentList.TYPE_Q, id);
+		} else btn.setEnabled(false);
+		
 		btn = (Button) dialog.findViewById(R.id.ButtonCancel);
 		btn.setOnClickListener(new OnClickListener() {
            public void onClick(View v) {
@@ -397,7 +429,7 @@ public class BWList extends ListActivity {
         	   phones.remove(lpress);
         	   flist.invalidateViews();
         	   if(lines.size()==0) {
-        		   adapter = new ListLineAdapter(cntx);
+        		   adapter = new ListLineAdapter(v.getContext());
         		   setListAdapter(adapter);
         	   }
         	   bwlist.dirty = true;
@@ -417,7 +449,7 @@ public class BWList extends ListActivity {
 	           public void onClick(View v) {
 	               dialog.dismiss();
 	               Log.dbg("calling select_type_and_proceed()");
-	               select_type_and_proceed(2);
+	               select_type_and_proceed(PROCEED_CHG_ONE);
 	           }
 			});
 		}
@@ -471,7 +503,7 @@ public class BWList extends ListActivity {
 						for(String s : phonez) {
 							s.trim();
 							if(phones.contains(s)) {
-								Toast.makeText(cntx, R.string.TAlreadyPresent, Toast.LENGTH_SHORT).show();
+								Toast.makeText(v.getContext(), R.string.TAlreadyPresent, Toast.LENGTH_SHORT).show();
 								continue;
 							}
 							if(s.length()>1) {
@@ -495,7 +527,9 @@ public class BWList extends ListActivity {
 				btn.setOnClickListener(new OnClickListener() {
 				  public void onClick(View v) {
 					if(bwlist.dirty) saveBWlist();
-					String name = FContentList.LIST_FILES_EXT_PREFIXES[list_color] + edt.getText().toString().trim();
+					String s = edt.getText().toString().trim();
+					if(s.length()==0) return;
+					String name = FContentList.LIST_FILES_EXT_PREFIXES[list_color] + s;
 					FContentList ff = new FContentList(name,context);
 					ff.clear();
 					ff.addAll(bwlist);
@@ -587,6 +621,7 @@ public class BWList extends ListActivity {
 	   Log.dbg("size onActivityResult="+bwlist.size());
 	   setResult(1);
 	}
+	
 }
 	
 
