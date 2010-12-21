@@ -86,7 +86,7 @@ public class BWFilesBrowser extends ListActivity implements FilenameFilter	{
         	if(lpress >= lines.size()) return false;
         	String f = lines.get(lpress);
         	Intent intie = new Intent(Intent.ACTION_VIEW); 
-        	intie.setDataAndType(Uri.fromFile(new File("/sdcard/voix/sounds"+f)), "audio/wav");
+        	intie.setDataAndType(Uri.fromFile(new File("/sdcard/voix/sounds/"+f)), "audio/wav");
         	Log.msg("start playing " + f);
         	startActivity(intie);
         	return true;
