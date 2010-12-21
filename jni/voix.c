@@ -522,6 +522,8 @@ void answer_call(JNIEnv* env, jobject obj, jstring jfile) {
             log_err("cannot open auto answer sound file %s", file); 
 	    return;
         }
+	if(strlen(file)> 4 && strcmp(file+strlen(file)-4,".wav")==0)
+	  lseek(aa_file,sizeof(wavhdr),SEEK_SET); /* don't bother checking wav header */
         (*env)->ReleaseStringUTFChars(env,jfile,file);
 
 	pthread_create(&pt,0,say_them,0);

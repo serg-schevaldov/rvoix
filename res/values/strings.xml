@@ -3,7 +3,7 @@
     
 <string name="app_name">rVoix</string>
 
-<string name="SBuild">rVoix: Version 1.05 Build 25</string>
+<string name="SBuild">rVoix: Version 1.05 Build 70</string>
 
 <string name="RRMode">Start service</string>
 <string name="Settings">Settings</string>
@@ -161,9 +161,9 @@
 <string-array name="BlistActions">
 <item>Off</item>
 <item>Blacklist</item>
-<item>Whitelist: hangup all other calls</item>
-<item>Whitelist: mute all other calls</item>
-<item>Whitelist: autoanswer all other calls</item>
+<item>WL: hangup others</item>
+<item>WL: mute others</item>
+<item>WL: autoanswer others</item>
 </string-array>
 
 <string name="SSelAll">Select all</string>
@@ -215,6 +215,9 @@
 
 <string name="TAlreadyPresent">Number already present in the list.</string>
 <string name="TNumAdded">Number added.</string>
+<string name="TAlreadyPresents">were already in the list.</string>
+<string name="TNumsAdded">Numbers added:</string>
+
 <string name="TNothingSelected">Nothing selected.</string>
 
 <string name="SDebuggingGroup">Debugging options</string>
@@ -233,9 +236,27 @@
 
 <string name="SABlist">Numbers in blacklist</string>
 <string name="SAWlist">Numbers not in whitelist</string>
+<string name="SAElist">Numbers in incoming ex/list</string>
 
+<string name="SAANew">Record new file</string>
 <string name="SAANoFile">File not set</string>
 <string name="SAASndFile">Select sound file</string>
+
+<string name="SFDefaults">Default files</string>
+
+<string name="SCantCreateSndDir">Cannot create "/sdcard/voix/sounds"</string>
+<string name="StartRecord">Start</string>
+<string name="StopRecord">Stop</string>
+<string name="SaveRecord">Save</string>
+<string name="SQuit">Quit</string>
+<string name="RecError">Recorder error</string>
+<string name="RecErrorInit">Recorder initialisation error</string>
+<string name="RecErrorSetup">Recorder setup error</string>
+<string name="RecErrorWrite">Write error</string>
+<string name="SNoFileName">Enter file name to save</string>
+<string name="SFileNotSaved">Previous recording not saved, proceed anyway?</string>
+<string name="SCantSave">Error saving a file</string>
+<string name="SLastNotSaved">Last file was not saved!</string>
 
 </resources>
 
