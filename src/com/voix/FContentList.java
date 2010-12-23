@@ -147,9 +147,10 @@ public class FContentList extends ArrayList <String> {
         }
 	}
 	
+	@SuppressWarnings("unchecked")
 	public void trim_content() {
 		// remove duplicates
-		HashSet<String> set = new HashSet<String>((ArrayList <String>)clone());
+		HashSet<String> set = new HashSet<String> ((ArrayList <String>)clone());
 		clear();
 		addAll(set);
 		// remove non-existing elements
@@ -163,7 +164,7 @@ public class FContentList extends ArrayList <String> {
 			}
 		}
 		if(size() > 0) {
-			ArrayList <String>a = (ArrayList <String>)clone();
+			ArrayList <String>a = (ArrayList <String>) clone();
 			Collections.sort(a);
 			clear();
 			addAll(a);

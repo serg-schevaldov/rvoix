@@ -3,7 +3,7 @@
     
 <string name="app_name">rVoix</string>
 
-<string name="SBuild">rVoix: Version 1.06 Build 16</string>
+<string name="SBuild">rVoix: Version 1.06 Build 26</string>
 
 <string name="RRMode">Start service</string>
 <string name="Settings">Settings</string>
@@ -213,6 +213,7 @@
 </string-array>
 
 <string name="SChtype">Change type</string>
+<string name="SSelectType">Select type</string>
 <string name="SEdit">Edit number</string>
 <string name="SEdit1">Edit</string>
 <string name="SSelList">Select list</string>
@@ -221,7 +222,7 @@
 <string name="TNumAdded">Number added.</string>
 <string name="TAlreadyPresents">were already in the list.</string>
 <string name="TNumsAdded">Numbers added:</string>
-
+<string name="TNothingAdded">Nothing added.</string>
 <string name="TNothingSelected">Nothing selected.</string>
 
 <string name="SDebuggingGroup">Debugging options</string>
