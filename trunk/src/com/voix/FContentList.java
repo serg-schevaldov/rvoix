@@ -38,6 +38,7 @@ public class FContentList extends ArrayList <String> {
 	public static final char TYPE_N = 'n';	// don't record
 	public static final char TYPE_I = 'i';	// in-call record
 	public static final char TYPE_Q = 'q';	// auto answer
+	public static final char TYPE_X = 'x';	// auto answer+record
 	public static final char TYPE_Z = 'z';	// any type
 	
 	public static final String FAVS_FILE = "/sdcard/voix/.favourites";

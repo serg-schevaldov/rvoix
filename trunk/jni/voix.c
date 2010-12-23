@@ -41,16 +41,20 @@
 
 
 static int alive = 0;
+static int aa_record_started = 0;
 static int boost_up = 0;
 static int boost_dn = 0;
 static char cur_file[256];
 static pthread_t rec1, rec2;
+static int fdx[2];
+static int fdo[2];
 
 static JavaVM *gvm; 
 static jobject giface;
 
 void *record(void *);
 void *encode(void *);
+void *encode_incoming(void *);
 
 static pthread_mutex_t mutty;
 
@@ -109,28 +113,38 @@ void stop_record(JNIEnv* env, jobject obj, jint codec) {
     pthread_t k;
 
 	log_info("stop_record");
+
+	pthread_mutex_lock(&mutty);
 	alive = 0;	
-	pthread_create(&k,0,encode,(void *)codec);	
+	if(codec >= 2) {
+	   if(aa_record_started) pthread_create(&k,0,encode_incoming,(void *)codec);
+	} else pthread_create(&k,0,encode,(void *)codec);	
+	pthread_mutex_unlock(&mutty);
+
 }
 
-#define TESTRPC 1
 
-#ifdef TESTRPC
-int fdx[2];
-int fdo[2];
-#endif
 
 void *record(void *init) {
 
     char file[256], *buff;
     int fd, fd_out, isup = (int) init;
-
+    int err_count;
 	log_info("in %s thread", isup? "uplink" : "downlink");
 
+	if(!isup)  {
+	    pthread_mutex_lock(&mutty);
+	    if(!alive) {
+	    	pthread_mutex_unlock(&mutty);
+		log_info("was already stopped, exiting");
+		return 0;
+	    }	 	
+	}
 	fd = open(isup ? "/dev/voc_tx_record" : "/dev/voc_rx_record", O_RDWR);
 	if(fd < 0)  {
             fd = open(isup ? "/dev/vocpcm2" : "/dev/vocpcm0", O_RDWR);
 	    if(fd < 0) {
+	    	if(!isup) pthread_mutex_unlock(&mutty);
          	log_err("cannot open %s driver",isup? "uplink" : "downlink" ); return 0;
 	    }
 	}
@@ -138,6 +152,7 @@ void *record(void *init) {
 	/* positive return values are ok for this ioctl */
 	if(ioctl(fd,VOCPCM_REGISTER_CLIENT,0) < 0) {
 	    close(fd);	
+	    if(!isup) pthread_mutex_unlock(&mutty);
             log_err("cannot register rpc client"); return 0;
 	}
 
@@ -147,13 +162,16 @@ void *record(void *init) {
 	if(fd_out < 0) {
 	    ioctl(fd,VOCPCM_UNREGISTER_CLIENT,0); 
 	    close(fd);
+	    if(!isup) pthread_mutex_unlock(&mutty);
 	    log_err("cannot open output file \'%s\'",file); return 0;
 	}
+	if(!isup) {
+	    aa_record_started = 1;	
+	    pthread_mutex_unlock(&mutty);
+	}
 
-#ifdef TESTRPC
 	fdx[isup] = fd;
 	fdo[isup] = fd_out;
-#endif
 
 	buff = (char *) malloc(READ_SIZE);
 	if(!buff) {
@@ -163,19 +181,32 @@ void *record(void *init) {
 	    unlink(file);		
 	    log_err("out of memory"); return 0;
 	}
+	
+#define MAX_ERR_COUNT 3 
+	err_count = 0;
 
 	while(alive) {
 	    int i = read(fd,buff,READ_SIZE);
 	    if(i < 0) {
+		err_count++;
+		log_err("read error in %s thread", isup ? "uplink":"downlink");
+		if(err_count == MAX_ERR_COUNT) {
+		   log_err("max read err count in %s thread reached", isup ? "uplink":"downlink");	
+		   break;
+		}
 		/* log_err("read error in %s thread: %d returned",isup? "uplink" : "downlink",i);
 		   break; */
-	    } else if(i <= READ_SIZE) write(fd_out,buff,i);
+	    } else if(i <= READ_SIZE) {
+		i = write(fd_out,buff,i);
+		if(i < 0) {
+		    log_err("write error in %s thread", isup ? "uplink":"downlink");	
+		    break;	
+		}
+	    }	
 	}
-#ifndef TESTRPC
-	ioctl(fd,VOCPCM_UNREGISTER_CLIENT,0); 
-	close(fd); 
-	close(fd_out);
-#endif
+
+	/* fd and fd_out still open: fd_out to be closed in encode() and fd in closeup() */
+
 	free(buff);
 
     return 0;
@@ -219,20 +250,20 @@ static void boost_buff(int16_t *buff, size_t bufsz, int boost) {
      for(i = 0; i < bufsz; i++) buff[i] = boost_word(buff[i],boost);
 }
 
-#ifdef TESTRPC
 pthread_t clsup;
-void *closeup(void *unused) {
-//	ioctl(fdx[0],VOCPCM_UNREGISTER_CLIENT,0); 
+void *closeup(void *used) {
+   int both = (int) used;
+	log_info("in closeup thread");
+/*	ioctl(fdx[0],VOCPCM_UNREGISTER_CLIENT,0);  */
 	close(fdx[0]); 
-//	ioctl(fdx[1],VOCPCM_UNREGISTER_CLIENT,0); 
-	close(fdx[1]); 
+/*	ioctl(fdx[1],VOCPCM_UNREGISTER_CLIENT,0);  */
+	if(both) close(fdx[1]); 
 	pthread_join(rec1,0);
-	pthread_join(rec2,0);
-	log_info("recorder threads joined");
+	if(both) pthread_join(rec2,0);
+	log_info("recorder thread%s joined", both ? "s": "");
         recording_complete();
   return 0;	
 }
-#endif
 
 void *encode(void *init) {
    
@@ -242,7 +273,7 @@ void *encode(void *init) {
     int16_t *b0 = 0, *b1 = 0, *b2 = 0;
 #ifdef USING_LAME
     lame_global_flags *gfp;
-    int  mp3 = (int) init;	
+    int  mp3 = ((int) init) & 1;	
 #endif
     struct timeval start, stop, tm;
     off_t off1, off2, off_out;	
@@ -251,19 +282,14 @@ void *encode(void *init) {
 
 	strcpy(fn,cur_file);
 
-#ifdef TESTRPC
 	close(fdo[0]);
 	close(fdo[1]);
-	pthread_create(&clsup,0,closeup,(void *) 0);
-#else
-	pthread_join(rec1,0);
-	pthread_join(rec2,0);
-	recording_complete();	
-#endif
+	pthread_create(&clsup,0,closeup,(void *) 1);
+
 	log_info("recorder threads complete, encoding");
 	gettimeofday(&start,0);
 
-	if(mp3 < 0) {
+	if((int) init < 0) {
 	     log_info("deleting at user request");	
 	     sprintf(file, OUT_DIR "/%s-up",fn); unlink(file);
              sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
@@ -277,10 +303,10 @@ void *encode(void *init) {
 	if(fd1 < 0 || fd2 < 0) {
 	     if(fd1 >= 0) { 
 		close(fd1); sprintf(file, OUT_DIR "/%s-up",fn); unlink(file);
-	     }	
+	     }
 	     if(fd2 >= 0) {
 		close(fd2); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
-	     }	
+	     } 
 	     log_err("encode: input file not found");
 	     return 0;		
 	}
@@ -315,7 +341,7 @@ void *encode(void *init) {
 	}
 	i &= ~1;
 	if(i == 0) {
-	     log_err("zero size input file");
+	     log_info("zero size input file");
 	     close(fd_out); unlink(file);
 	     close(fd1); sprintf(file, OUT_DIR "/%s-up",fn); unlink(file);		
 	     close(fd2); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
@@ -399,7 +425,6 @@ void *encode(void *init) {
 	i = (uint32_t) lame_encode_flush(gfp,(unsigned char *)b0,OCHSZ);
 	if(i) write(fd_out,b0,i);
 	i = lame_get_lametag_frame(gfp,(unsigned char *)b0,OCHSZ);
-	log_info("lame_get_lametag_frame returned %d",i);
 	if(i>0) write(fd_out,b0,i);
 	lame_close(gfp);
      } else {		
@@ -417,8 +442,13 @@ void *encode(void *init) {
              close(fd2); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
              return 0;
         }
+
+        wavhdr.num_channels = 2;
+        wavhdr.byte_rate = 32000;
+        wavhdr.block_align = 4;
 	wavhdr.data_sz = i*2;
 	wavhdr.riff_sz = i*2 + 36; 
+
 	write(fd_out,&wavhdr,sizeof(wavhdr));
 	k = 0;		
 	if(boost_up && boost_dn)
@@ -486,7 +516,7 @@ void *encode(void *init) {
 	
 	gettimeofday(&stop,0);
         timersub(&stop,&start,&tm);
-        log_info("encoding complete: %ld-> %ld in %ld%ld ms", off1+off2, off_out, tm.tv_sec,tm.tv_usec/1000);
+        log_info("encoding complete: %ld -> %ld in %ld sec", off1+off2, off_out, tm.tv_sec);
 
 	sprintf(file, OUT_DIR "/%s-up",fn); unlink(file);
 	sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
@@ -503,12 +533,13 @@ static void  call_java2hangup();
 
 static int aa_file = -1;
 
-void answer_call(JNIEnv* env, jobject obj, jstring jfile) {
+void answer_call(JNIEnv* env, jobject obj, jstring jfile, jstring ofile, jint jbd) {
 
     pthread_t pt;
     const char *file = 0;
 	
 	log_info("in answer_call");
+	aa_record_started = 0;
 
         file = (*env)->GetStringUTFChars(env,jfile,NULL);
         if(!file || !*file) {
@@ -526,6 +557,18 @@ void answer_call(JNIEnv* env, jobject obj, jstring jfile) {
 	  lseek(aa_file,sizeof(wavhdr),SEEK_SET); /* don't bother checking wav header */
         (*env)->ReleaseStringUTFChars(env,jfile,file);
 
+
+	file = (*env)->GetStringUTFChars(env,ofile,NULL);
+	if(file && *file) strcpy(cur_file,file);		
+	else *cur_file = 0;
+
+	(*env)->ReleaseStringUTFChars(env,ofile,file);
+
+	if(*cur_file) log_info("will record to %s after answering", cur_file);
+	else log_info("will hang up after answering");
+
+	boost_dn = jbd;	
+    
 	pthread_create(&pt,0,say_them,0);
 }
 
@@ -558,25 +601,197 @@ static void *say_them(void *p) {
 	write(fd,buff,BUFFER_SIZE);
 
         log_info("answering...");
+	alive = 1;
 
-	while(1) {	
+	while(alive) {	
 	    int i,m;
 	    i  = read(aa_file,buff,BUFFER_SIZE);
 	    if(i <= 0) break;
 	    m = write(fd,buff,i);
-	 //   log_info("read %d wrote %d", i, m);	
-	 //   if(m <= 0) break;
+	    if(m < 0)  {
+		log_info("playback: i'm probably closed from outside");
+		pthread_mutex_lock(&mutty);	
+		alive = 0;
+		pthread_mutex_unlock(&mutty);	
+		break;
+	    }	
 	}
 
-//	ioctl(fd,VOCPCM_UNREGISTER_CLIENT,0);
+/*	ioctl(fd,VOCPCM_UNREGISTER_CLIENT,0); */
         close(fd);
 	close(aa_file);
 	aa_file = -1;
 	free(buff);
-        log_err("now hanging up in java");
-	call_java2hangup();
-
+	if(!alive || *cur_file == 0) {
+            log_info("now hanging up in java");
+	    call_java2hangup();
+	} else {
+	 pthread_attr_t attr;
+	    pthread_attr_init(&attr);
+            pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+        /* records incoming sound data */
+            pthread_create(&rec1,&attr,record,(void *) 0);
+	}
     return 0;	
+}
+
+void *encode_incoming(void *init) {
+   
+    char fn[256], file[256];
+    int  fd1 = -1, fd_out = -1;
+    uint32_t i, k;
+    int16_t *b0 = 0, *b1 = 0;
+#ifdef USING_LAME
+    lame_global_flags *gfp;
+    int  mp3 = ((int) init) & 1;	
+#endif
+    struct timeval start, stop, tm;
+    off_t off1, off_out;	
+	
+	log_info("in encode_incoming thread");
+	strcpy(fn,cur_file);
+
+	close(fdo[0]);
+	pthread_create(&clsup,0,closeup,(void *) 0);
+
+	gettimeofday(&start,0);
+
+	sprintf(file, OUT_DIR "/%s-dn",fn);
+	fd1 = open(file,O_RDONLY);
+	if(fd1 < 0) {
+	     sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
+	     log_err("encode: input file not found");
+	     return 0;		
+	}
+#ifdef USING_LAME
+     if(mp3) 
+        sprintf(file, OUT_DIR "/%s.mp3",fn);
+     else 
+#endif
+	sprintf(file, OUT_DIR "/%s.wav",fn);
+	fd_out = open(file,O_CREAT|O_TRUNC|O_WRONLY);
+	if(fd_out < 0) {
+	     log_err("encode: cannot open output file %s",file);
+             close(fd1); sprintf(file, OUT_DIR "/%s-up",fn); unlink(file);
+	     return 0;		
+	}
+	i = (uint32_t) lseek(fd1,0,SEEK_END);
+	log_dbg("%s-dn: size=%d", fn, i);
+	lseek(fd1,0,SEEK_SET);
+	if(i == 0) {
+	     log_info("zero size input file");
+	     close(fd_out); unlink(file);
+	     close(fd1); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);		
+	     return 0;			
+	}
+#ifdef USING_LAME
+     if(mp3) {
+
+	gfp = lame_init();
+	lame_set_errorf(gfp,lame_error_handler);
+	lame_set_debugf(gfp,lame_error_handler);
+	lame_set_msgf(gfp,lame_error_handler);
+	lame_set_num_channels(gfp,2);
+	lame_set_in_samplerate(gfp,8000);
+#if 0 
+	lame_set_brate(gfp,64); /* compress 1:4 */
+	lame_set_mode(gfp,0);	/* mode = stereo */
+	lame_set_quality(gfp,2);   /* 2=high  5 = medium  7=low */ 
+#else
+	lame_set_quality(gfp,5);   /* 2=high  5 = medium  7=low */ 
+	lame_set_mode(gfp,3);	/* mode = mono */
+	if(lame_get_VBR(gfp) == vbr_off) lame_set_VBR(gfp, vbr_default);
+        lame_set_VBR_quality(gfp, 7.0);
+	lame_set_findReplayGain(gfp, 0);
+	lame_set_bWriteVbrTag(gfp, 1);
+	lame_set_out_samplerate(gfp,11025);
+/*	lame_set_num_samples(gfp,i/2); */
+#endif
+	if(lame_init_params(gfp) < 0) {
+	     log_err("encode: failed to init lame"); 	
+             close(fd_out); unlink(file);
+             close(fd1); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
+	     return 0;			
+	}
+#define CHSZ (512*1024)
+#define OCHSZ (5*(CHSZ/8)+7200) 
+	b0 = (int16_t *) malloc(OCHSZ);
+        b1 = (int16_t *) malloc(CHSZ);
+        if(!b0 || !b1) {
+             log_err("encode: out of memory");
+	     if(b0) free(b0);
+             if(b1) free(b1);
+             close(fd_out); unlink(file);
+             close(fd1); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
+             return 0;
+        }
+	k = 0;
+	do {
+	   int ret = 0;	
+	   uint32_t j = 0, count = 0;
+	   unsigned char *c1;	
+	     for(c1 = (unsigned char*) b1; count < CHSZ; c1 += ret) {
+		j = (k + RSZ > i) ? i - k : RSZ;
+		ret = read(fd1,c1,j);
+		if(ret < 0) break;
+		k += ret; count += ret;
+		if(k == i) break;
+	     }
+	     if(ret < 0) break;	
+	     if(count) {
+		if(boost_dn) boost_buff(b1,count/2,boost_up);
+		ret = lame_encode_buffer(gfp,b1,b1,count/2,(unsigned char *)b0,OCHSZ);
+		if(ret < 0) break;
+		c1 = (unsigned char *) b0;
+		count = ret;
+		for(j = 0; j < count; j += RSZ, c1 += ret) {
+		     ret = (j + RSZ > count) ? count - j : RSZ;
+		     write(fd_out,c1,ret);
+		}		
+	     }				
+	} while(k < i);
+	i = (uint32_t) lame_encode_flush(gfp,(unsigned char *)b0,OCHSZ);
+	if(i) write(fd_out,b0,i);
+	i = lame_get_lametag_frame(gfp,(unsigned char *)b0,OCHSZ);
+	if(i>0) write(fd_out,b0,i);
+	lame_close(gfp);
+     } else {		
+#endif
+        b1 = (int16_t *) malloc(RSZ);
+        if(!b1) {
+             log_err("encode: out of memory");
+             close(fd_out); unlink(file);
+             close(fd1); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
+             return 0;
+        }
+	wavhdr.num_channels = 1;
+	wavhdr.byte_rate = 16000;
+	wavhdr.block_align = 2;
+	wavhdr.data_sz = i;
+	wavhdr.riff_sz = i + 36; 
+	write(fd_out,&wavhdr,sizeof(wavhdr));
+	k = 0;		
+	while(1) {
+            uint32_t count = (k + RSZ > i) ? i - k : RSZ;
+                if(read(fd1,b1,count) < 0) break;
+		if(boost_dn) boost_buff(b1,count/2,boost_dn);
+                write(fd_out,b1,count);
+                k += count;
+                if(k == i) break;
+        }
+#ifdef USING_LAME
+    }
+#endif
+	off1 = lseek(fd1, 0, SEEK_END);
+	off_out = lseek(fd_out, 0, SEEK_END);
+	close(fd1); close(fd_out);
+	if(b0) free(b0); if(b1) free(b1);;	
+	gettimeofday(&stop,0);
+        timersub(&stop,&start,&tm);
+        log_info("encoding complete: %ld -> %ld in %ld sec", off1, off_out, tm.tv_sec);
+	sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
+	encoding_complete();
+    return 0; 
 }
 
 static void call_java_callback(const char *function) {
@@ -633,7 +848,7 @@ static const char *classPathName = "com/voix/RVoixSrv";
 static JNINativeMethod methods[] = {
   { "startRecord", "(Ljava/lang/String;II)I", (void *) start_record },
   { "stopRecord", "(I)V", (void *) stop_record },
-  { "answerCall", "(Ljava/lang/String;)V", (void *) answer_call }
+  { "answerCall", "(Ljava/lang/String;Ljava/lang/String;I)V", (void *) answer_call }
 };
 
 jint JNI_OnLoad(JavaVM* vm, void* reserved) {
@@ -673,7 +888,6 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
 
     return JNI_VERSION_1_4;
 }
-
 
 
 

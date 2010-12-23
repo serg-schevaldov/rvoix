@@ -71,7 +71,7 @@ public class Prefs extends PreferenceActivity
 		String []iw = getResources().getStringArray(R.array.BlistActions);
 		m = (ListPreference) screen.findPreference("bmode");
 		int io = str2int(settings.getString("bmode", "0"));
-		if(io > RVoixSrv.BMODE_WLIST_AA) io = RVoixSrv.BMODE_NONE;
+		if(io > RVoixSrv.BMODE_LAST) io = RVoixSrv.BMODE_NONE;
 		m.setSummary(iw[io]);
 		
 		String []aa = {"edit_wlist","edit_blist","edit_ielist","edit_oelist"};
@@ -83,7 +83,7 @@ public class Prefs extends PreferenceActivity
 			set_pref_handler(p, "com.voix.BWList", col[i], BW_REQ_CODE);
 		}
 
-		String []bb = {"un_file","cn_file","nc_file","ba_file","wa_file","ea_file"};
+		String []bb = {"un_file","cn_file","nc_file","ba_file","wa_file"};
 		for(int i = 0; i < bb.length; i++) {
 			Preference p = screen.findPreference(bb[i]);
 			String s = settings.getString(bb[i], null);
@@ -203,7 +203,7 @@ public class Prefs extends PreferenceActivity
 		           Log.dbg("user selected sound file: " + fname);
 				   prefs_changed = true;
 				   PreferenceScreen screen = getPreferenceScreen();
-				   String[] lst = {"un_file","cn_file","nc_file","ba_file","wa_file","ea_file"};
+				   String[] lst = {"un_file","cn_file","nc_file","ba_file","wa_file"};
 				   int i = requestCode - AA_REQ_CODE;
 				   Preference p = screen.findPreference(lst[i]);
 				   p.setSummary(fbPath);

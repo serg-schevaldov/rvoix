@@ -3,7 +3,7 @@
     
 <string name="app_name">rVoix</string>
 
-<string name="SBuild">rVoix: Версия 1.05 Сборка 71</string>
+<string name="SBuild">rVoix: Версия 1.06 Сборка 15</string>
 
 <string name="RRMode">Запустить сервис</string>
 <string name="Settings">Настройки</string>
@@ -43,6 +43,15 @@
 <item>Запуск вручную во время звонка</item>
 </string-array>
 
+<string-array name="OutCallValues">
+<item>0</item>
+<item>1</item>
+<item>2</item>
+<item>3</item>
+<item>4</item>
+<item>5</item>
+</string-array>
+
 <string-array name="InCallActions">
 <item>Ничего не делать</item>
 <item>Записывать</item>
@@ -51,15 +60,18 @@
 <item>Всегда спрашивать</item>
 <item>Запуск вручную во время звонка</item>
 <item>Автоответ</item>
+<item>Автоответ+запись</item>
 </string-array>
 
-<string-array name="CallValues">
+<string-array name="InCallValues">
 <item>0</item>
 <item>1</item>
 <item>2</item>
 <item>3</item>
 <item>4</item>
 <item>5</item>
+<item>6</item>
+<item>7</item>
 </string-array>
 
 <string name="SMode">Режим</string>
@@ -148,6 +160,7 @@
 <item>2</item>
 <item>3</item>
 <item>4</item>
+<item>5</item>
 </string-array>
 
 <string-array name="BlistActions">
@@ -156,6 +169,7 @@
 <item>БС: отбой других</item>
 <item>БС: откл. звука</item>
 <item>БС: авоответ</item>
+<item>БС: авоответ+запись</item>
 </string-array>
 
 <string name="SSelAll">Выбрать все</string>
@@ -214,7 +228,7 @@
 <string name="TNothingSelected">Ничего не выбрано.</string>
 
 <string name="SDebuggingGroup">Отладочные опции</string>
-<string name="SLogging">Вести журнал звонков</string>
+<string name="SLogging">Вести журнал отладки</string>
 <string name="SRmLog">Очистить журнал</string>
 <string name="STattooHack">Hack для Tattoo</string>
 
@@ -225,6 +239,7 @@
 <string name="SViewLog">Просмотреть журнал</string>
 
 <string name="SAA">Автоответ</string>
+<string name="SAAR">Автоответ+запись</string>
 <string name="SAAF">Файлы автоответа</string>
 
 <string name="SABlist">Номера из черного списка</string>

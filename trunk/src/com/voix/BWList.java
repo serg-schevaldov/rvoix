@@ -92,6 +92,9 @@ public class BWList extends ListActivity {
 				case FContentList.TYPE_Q:
 					img_res = R.drawable.aa;
 					break;
+				case FContentList.TYPE_X:
+					img_res = R.drawable.ar;
+					break;
 				case FContentList.TYPE_A:
 					img_res = R.drawable.ask;
 					break;
@@ -393,6 +396,10 @@ public class BWList extends ListActivity {
 
 			btn = (Button) dialog.findViewById(R.id.ButtonI);
 			set_chtype_listener(dialog,btn,FContentList.TYPE_I, id);
+
+			btn = (Button) dialog.findViewById(R.id.ButtonX);
+			if(list_color == FContentList.IEMODE) set_chtype_listener(dialog,btn,FContentList.TYPE_X, id); 
+			else btn.setEnabled(false); 
 		}
 		
 		btn = (Button) dialog.findViewById(R.id.ButtonQ);
@@ -400,12 +407,6 @@ public class BWList extends ListActivity {
 			set_chtype_listener(dialog,btn,FContentList.TYPE_Q, id);
 		} else btn.setEnabled(false);
 		
-		btn = (Button) dialog.findViewById(R.id.ButtonCancel);
-		btn.setOnClickListener(new OnClickListener() {
-           public void onClick(View v) {
-               dialog.dismiss();
-           }
-		});
 		dialog.show();
 	}	
 
@@ -453,12 +454,6 @@ public class BWList extends ListActivity {
 	           }
 			});
 		}
-		btn = (Button) dialog.findViewById(R.id.ButtonCancel);
-		btn.setOnClickListener(new OnClickListener() {
-           public void onClick(View v) {
-               dialog.dismiss();
-           }
-		});
 		dialog.show();
 	}
 
@@ -567,12 +562,12 @@ public class BWList extends ListActivity {
 				});
 				break;
 		}
-		btn = (Button) dialog.findViewById(R.id.ButtonNo);
+/*		btn = (Button) dialog.findViewById(R.id.ButtonNo);
 		btn.setOnClickListener(new OnClickListener() {
            public void onClick(View v) {
                dialog.dismiss();
            }
-		});
+		}); */
 		dialog.show();
 	}
 
