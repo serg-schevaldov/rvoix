@@ -105,9 +105,6 @@
   		<Preference
 			android:key="wa_file"
 			android:title="@string/SAWlist"/>
-  		<Preference
-			android:key="ea_file"
-			android:title="@string/SAElist"/>
   	  </PreferenceCategory>
   	</PreferenceScreen>
 

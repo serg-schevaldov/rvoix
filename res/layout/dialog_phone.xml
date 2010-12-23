@@ -16,6 +16,4 @@
 	android:layout_width="fill_parent" android:layout_height="wrap_content" android:text="@string/SFilter" android:minHeight="60px" android:minWidth="240px"></Button>
 <Button android:id="@+id/ButtonCall" android:textSize="16dp" 
 	android:layout_width="fill_parent" android:layout_height="wrap_content" android:text="@string/SCall" android:minHeight="60px" android:minWidth="240px"></Button>
-<Button android:id="@+id/ButtonCancel" android:textSize="16dp" 
-	android:layout_width="fill_parent" android:layout_height="wrap_content" android:text="@string/SCancel" android:minHeight="60px" android:minWidth="240px"></Button>
 </LinearLayout>

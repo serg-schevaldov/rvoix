@@ -3,7 +3,7 @@
     
 <string name="app_name">rVoix</string>
 
-<string name="SBuild">rVoix: Version 1.05 Build 71</string>
+<string name="SBuild">rVoix: Version 1.06 Build 15</string>
 
 <string name="RRMode">Start service</string>
 <string name="Settings">Settings</string>
@@ -58,7 +58,8 @@
 <item>Mute the ring</item>
 <item>Ask on each call</item>
 <item>In-call manual control</item>
-<item>Auto answer</item>
+<item>Autoanswer</item>
+<item>Autoanswer+record</item>
 </string-array>
 
 <string-array name="InCallValues">
@@ -69,6 +70,7 @@
 <item>4</item>
 <item>5</item>
 <item>6</item>
+<item>7</item>
 </string-array>
 
 <string name="SMode">Mode</string>
@@ -156,6 +158,7 @@
 <item>2</item>
 <item>3</item>
 <item>4</item>
+<item>5</item>
 </string-array>
 
 <string-array name="BlistActions">
@@ -164,6 +167,7 @@
 <item>WL: hangup others</item>
 <item>WL: mute others</item>
 <item>WL: autoanswer others</item>
+<item>WL: AA+record others</item>
 </string-array>
 
 <string name="SSelAll">Select all</string>
@@ -231,8 +235,9 @@
 
 <string name="SViewLog">View log</string>
 
-<string name="SAA">Auto answer</string>
-<string name="SAAF">Auto answer files</string>
+<string name="SAA">Autoanswer</string>
+<string name="SAAR">Autoanswer + record</string>
+<string name="SAAF">Autoanswer files</string>
 
 <string name="SABlist">Numbers in blacklist</string>
 <string name="SAWlist">Numbers not in whitelist</string>

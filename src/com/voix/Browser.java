@@ -123,7 +123,10 @@ public class Browser extends ListActivity {
 				} else if(file.substring(dirlen).startsWith("I-")) { 
 					if(filter_only_outgoing) continue;
 					recordings.add(new ListLine(trim(file,fsize),file,isfav,R.drawable.incoming, fsize, mtime));
-				}	
+				} else if(file.substring(dirlen).startsWith("A-")) {
+					if(filter_only_outgoing) continue;
+					recordings.add(new ListLine(trim(file,fsize),file,isfav,R.drawable.aaa, fsize, mtime));
+				}
 			}
 		}
 		if(recordings.size()> 0) {
@@ -145,7 +148,8 @@ public class Browser extends ListActivity {
 		for(int i = 0; i < files.length; i++) {
 			String file = files[i].toString();
 			if(file.endsWith(".wav") || file.endsWith(".mp3")) {
-				if(file.substring(dirlen).startsWith("O-") || file.substring(dirlen).startsWith("I-")) { 
+				if(file.charAt(dirlen+1) == '-' && (file.charAt(dirlen)=='I' 
+					|| file.charAt(dirlen)=='O' || file.charAt(dirlen)=='A')) { 
 					String s = ac_trim(file);
 					if(ac_items.contains(s)) continue;
 					ac_items.add(s);
@@ -300,13 +304,6 @@ public class Browser extends ListActivity {
    			}
    	   });
 	   
-	   btn = (Button) dialog.findViewById(R.id.ButtonCancel);
-	   btn.setOnClickListener(new OnClickListener() {
-           public void onClick(View v) {
-               dialog.dismiss();
-           }
-	   });
-	   
 	   btn = (Button) dialog.findViewById(R.id.ButtonBlack);
 	   btn.setOnClickListener(new OnClickListener() {
            public void onClick(View v) {
@@ -397,8 +394,10 @@ public class Browser extends ListActivity {
 		long size = sz;
 		try {
 			String tm;
-			if(file.endsWith("wav") && size != 0) size = (size-44)/(8000*4);
-			else {
+			if(file.endsWith("wav") && size != 0) {
+				if(file.charAt(dirlen) == 'A') size = (size-44)/(8000*2);
+				else size = (size-44)/(8000*4);
+			} else {
 				FileInputStream fip = new FileInputStream(new File(file));
 				try {
 					byte[] bb = new byte[12];
@@ -542,7 +541,6 @@ public class Browser extends ListActivity {
 	}
     private void add_to_list() {
     	final Dialog dialog = new Dialog(this);
-		Button btn;
 		list_color = FContentList.BMODE;
 		dialog.setContentView(R.layout.sel_lnames);
 		dialog.setTitle(R.string.SSelList);
@@ -551,12 +549,6 @@ public class Browser extends ListActivity {
 		set_button1(dialog, R.id.ButtonBlist, FContentList.BMODE);
 		set_button1(dialog, R.id.ButtonIElist, FContentList.IEMODE);
 		set_button1(dialog, R.id.ButtonOElist, FContentList.OEMODE);
-		btn = (Button) dialog.findViewById(R.id.ButtonCancel);
-		btn.setOnClickListener(new OnClickListener() {
-			public void onClick(View v) {
-				dialog.dismiss();
-			}
-		});
 		dialog.show();
     }
 
@@ -575,7 +567,6 @@ public class Browser extends ListActivity {
     private void select_type_and_proceed() {	   
 
     	final Dialog dialog = new Dialog(this);
-		Button btn;
 		selected_type = FContentList.TYPE_NONE;
 		
 		if(list_color == FContentList.BMODE) {
@@ -583,7 +574,6 @@ public class Browser extends ListActivity {
 			dialog.setTitle(R.string.SOverType);
 			set_button2(dialog, R.id.ButtonH, FContentList.TYPE_H);
 			set_button2(dialog, R.id.ButtonM, FContentList.TYPE_M);
-			
 		} else {
 			dialog.setContentView(R.layout.dialog_over_type);
 			dialog.setTitle(R.string.SOverType);
@@ -592,15 +582,14 @@ public class Browser extends ListActivity {
 			set_button2(dialog, R.id.ButtonN, FContentList.TYPE_N);
 			set_button2(dialog, R.id.ButtonI, FContentList.TYPE_I);
 		}	
-		if(list_color == FContentList.OEMODE) dialog.findViewById(R.id.ButtonQ).setEnabled(false);
-		else set_button2(dialog, R.id.ButtonQ, FContentList.TYPE_Q);
+		if(list_color == FContentList.OEMODE) {
+			dialog.findViewById(R.id.ButtonQ).setEnabled(false);
+			dialog.findViewById(R.id.ButtonX).setEnabled(false);
+		} else {
+			set_button2(dialog, R.id.ButtonQ, FContentList.TYPE_Q);
+			if(list_color != FContentList.BMODE) set_button2(dialog, R.id.ButtonX, FContentList.TYPE_X);
+		}
 		
-		btn = (Button) dialog.findViewById(R.id.ButtonCancel);
-		btn.setOnClickListener(new OnClickListener() {
-           public void onClick(View v) {
-               dialog.dismiss();
-           }
-		});
 		dialog.show();
 	}
     private void insert_to_list() {

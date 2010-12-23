@@ -38,7 +38,7 @@ public class RVoixSrv extends Service {
 	
     public static native int startRecord(String file, int bu, int bd);
 	public static native void stopRecord(int encoding_mode);
-	public static native void answerCall(String file);
+	public static native void answerCall(String file, String ofile, int bd);
 
 	// NB: The first two are also hard-coded in voix.c (passed in encoding_mode to startRecord) 
 	public static final int MODE_RECORD_WAV = 0;
@@ -60,6 +60,7 @@ public class RVoixSrv extends Service {
 	public static final int INCOMING_ACT_ASK = 4;
 	public static final int INCOMING_ACT_ASK_INCALL = 5;
 	public static final int INCOMING_ACT_AUTOANSWER = 6;
+	public static final int INCOMING_ACT_AUTOANSWER_RECORD = 7;
 	
 	private int unk_proc = INCOMING_ACT_REC;
 	private int cont_proc = INCOMING_ACT_REC;
@@ -72,7 +73,9 @@ public class RVoixSrv extends Service {
 	public static final int BMODE_WLIST_HUP = 2;
 	public static final int BMODE_WLIST_IGN = 3;
 	public static final int BMODE_WLIST_AA = 4;
-		
+	public static final int BMODE_WLIST_AR = 5;
+	public static final int BMODE_LAST = BMODE_WLIST_AR;
+	
 	private int bmode = BMODE_NONE;
 	
 	private static final int NOTIFY_ID = 1;
@@ -380,7 +383,8 @@ public class RVoixSrv extends Service {
    		} else if(inc_number != null){
    			String s = new String(inc_number);
 			if(s.contains("*")) s = inc_number.replace('*', '#'); 
-   			file = "I-" + file + (s.charAt(0) == '+' ? "" : "-") + s;
+   			String prefix = (call_proc == INCOMING_ACT_AUTOANSWER_RECORD) ? "A-" : "I-"; 
+			file = prefix + file + (s.charAt(0) == '+' ? "" : "-") + s;
    		}
 		if(ask_incall_started) file = file + "-" + chunk;
 		File f = new File("/sdcard/voix/" + file + ((srv_mode == MODE_RECORD_WAV) ? ".wav" : ".mp3"));
@@ -453,6 +457,7 @@ public class RVoixSrv extends Service {
 		
 		@Override
 		public void onReceive(Context context, Intent intent) {
+			try {
 			   String s = intent.getStringExtra(Intent.EXTRA_PHONE_NUMBER);
 			   Log.dbg("onReceive(): " + s);
 			   if(!logging) { 
@@ -482,9 +487,18 @@ public class RVoixSrv extends Service {
 				   call_type = CType.OUTGOING_NCONT;
 			   }
 			   Log.msg("OutNumReceiver: new outgoing call " + out_number);
+            } catch (Exception cause) {
+        	    StackTraceElement elements[] = cause.getStackTrace();
+        	    if(logging && log != null) { 
+        	    	for (int i = 0, n = elements.length; i < n; i++) {       
+        	    		log.write(">>> " + elements[i].getFileName() + ":" + 
+        	    				elements[i].getLineNumber() + ">> " + elements[i].getMethodName() + "()");
+        	    	}
+        	    }	
+        	}
 		}
 	}
-		
+			
 	private void shutup() {
 		Timer t = new Timer();
 		final int cur_mode = aman.getRingerMode();
@@ -512,8 +526,7 @@ public class RVoixSrv extends Service {
 		private String un_file = null;	//	for unknown numbers
 		private	String nc_file = null;	//	for non-contacts
 		private	String ba_file = null;	//	for blacklisted numbers
-		private	String wa_file = null;	//	for non-whitelisted numbers
-		private	String ea_file = null;	//	for incoming exceptions
+		private	String wa_file = null;	//	for not white listed numbers
 		
 		// Phone lists
 		private ArrayList <String> wlist = null; 	//	white list
@@ -525,11 +538,14 @@ public class RVoixSrv extends Service {
 		private ArrayList <String> inlist = null;	//	incoming/always do nothing
 		private ArrayList <String> iilist = null;	//	incoming/always process in-call
 		private ArrayList <String> iqlist = null;	//	incoming/always auto-answer
+		private ArrayList <String> ixlist = null;	//	incoming/always auto-answer and then record
 		
 		// called from onStart()
 		public void setup() {
-  			SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-			wlist  = get_array(FContentList.WMODE,FContentList.TYPE_NONE); 
+  			
+			SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+			
+  			wlist  = get_array(FContentList.WMODE,FContentList.TYPE_NONE); 
 			bhlist = get_array(FContentList.BMODE,FContentList.TYPE_H);
 			bmlist = get_array(FContentList.BMODE,FContentList.TYPE_M);
 			bqlist = get_array(FContentList.BMODE,FContentList.TYPE_Q);
@@ -538,20 +554,22 @@ public class RVoixSrv extends Service {
 			inlist = get_array(FContentList.IEMODE,FContentList.TYPE_N);
 			iilist = get_array(FContentList.IEMODE,FContentList.TYPE_I);
 			iqlist = get_array(FContentList.IEMODE,FContentList.TYPE_Q);
+			ixlist = get_array(FContentList.IEMODE,FContentList.TYPE_X);
+			
 			nc_file = settings.getString("nc_file", null);
 			cn_file = settings.getString("cn_file", null);
 			un_file = settings.getString("un_file", null);
 			ba_file = settings.getString("ba_file", null);
 			wa_file = settings.getString("wa_file", null);
-			ea_file = settings.getString("ea_file", null);
 		}
 
 		@Override
 		public void onReceive(Context context, Intent intent) {
     	   	   String s = intent.getStringExtra(TelephonyManager.EXTRA_STATE);
                Log.msg("onReceive(), state = " + s);
+           try {    
                
-               if(s.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
+        	   if(s.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
            	   	
             	    s = intent.getStringExtra("incoming_number");
 
@@ -567,7 +585,7 @@ public class RVoixSrv extends Service {
             	    	else if(s != null) report = "Incoming call from "+s;
             	    	else report = "Incoming call from <unknown>";
             	    }
-
+            	    //////////////////////  process black and white lists first //////////////////////////////
             	    switch(bmode) {
             	   		case BMODE_BLIST:
             	   			if(bhlist == null) bhlist = get_array(FContentList.BMODE,FContentList.TYPE_H);
@@ -593,7 +611,7 @@ public class RVoixSrv extends Service {
    	                	   				SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
    	                	   				ba_file = sts.getString("ba_file", null);
    	                	   			}
-   	                	   			auto_answer(ba_file);
+   	                	   			auto_answer(ba_file,null);
             	   					return;
             	   				}
             	   				Log.msg(s + " not blacklisted, continue");
@@ -627,15 +645,21 @@ public class RVoixSrv extends Service {
             	   				return;	
             	   			}
             	   			break;
-            	   		case BMODE_WLIST_AA:
+            	   		case BMODE_WLIST_AA: 
+            	   		case BMODE_WLIST_AR:
                     	    if(wlist == null) wlist  = get_array(FContentList.WMODE,FContentList.TYPE_NONE);
             	   			if(wlist.size()==0) break;
             	   			if(s == null || !wlist.contains(s)) {
+            	   				String outfile = null;
             	   				if(wa_file == null) {
             	   					SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
    	                	   			wa_file = sts.getString("wa_file", null);
    	                	   		}
-            	   				auto_answer(wa_file);
+            	   				if(bmode == BMODE_WLIST_AR) {
+                	   				call_proc = INCOMING_ACT_AUTOANSWER_RECORD;
+                	   				outfile = makeFilename();
+            	   				}
+            	   				auto_answer(wa_file,outfile);
             	   				return;	
             	   			}
             	   			break;
@@ -643,8 +667,13 @@ public class RVoixSrv extends Service {
             	   			Log.dbg("no b/w lists active");
             	   			break;
             	   	}
-            	   	if(s != null) {
+            	    //////////////////////  black and white lists processed //////////////////////////////
+            	    
+            	    //////////////////////  Set the default action and process /////////////////////////// 
+            	    //////////////////////  overrides from exception lists ///////////////////////////////
+            	    if(s != null) {
             	   		String name = ctx.findInContacts(s);
+
             	   		if(name != null) {
             	   			call_type = CType.INCOMING_CONT;
             	   			call_proc = cont_proc;
@@ -662,6 +691,7 @@ public class RVoixSrv extends Service {
             	   		if(inlist == null) inlist = get_array(FContentList.IEMODE,FContentList.TYPE_N);
             	   		if(iilist == null) iilist = get_array(FContentList.IEMODE,FContentList.TYPE_I);
             	   		if(iqlist == null) iilist = get_array(FContentList.IEMODE,FContentList.TYPE_Q);
+            	   		if(ixlist == null) iilist = get_array(FContentList.IEMODE,FContentList.TYPE_X);
             	   		
             	   		if(irlist.contains(s)) {	// overrides
             	   			call_proc = INCOMING_ACT_REC;
@@ -679,28 +709,20 @@ public class RVoixSrv extends Service {
             	   			call_proc = INCOMING_ACT_ASK_INCALL;
             	   			Log.dbg("phone found in always ask in-call list");
             	   			if(report != null) report += " [in always incall list]";
-            	   		} else if(iqlist.contains(s)) {
-            	   			call_proc = INCOMING_ACT_AUTOANSWER;
+            	   		} else if(iqlist.contains(s) || ixlist.contains(s)) {
+            	   			boolean need_rec = ixlist.contains(s);
+            	   			call_proc = need_rec ? INCOMING_ACT_AUTOANSWER_RECORD : INCOMING_ACT_AUTOANSWER;
             	   			Log.dbg("phone found in always autoanswer list");
             	   			if(report != null) report += " [in always a/a list]";
-               	   			String aa_file = "/sdcard/voix/sounds/" + s;
+               	   			String aa_file = "/sdcard/voix/sounds/" + s + ".wav";
             	   			if((new File(aa_file)).exists()) {
-            	   				if(report != null) report += ", "+aa_file+" found";
-            	   				auto_answer(aa_file);
-                   	   			return;
-            	   			}
-            	   			if((new File(aa_file+".wav")).exists()) {
             	   				if(report != null) report += ", "+aa_file+".wav found";
-            	   				auto_answer(aa_file+".wav");
+            	   				String outfile = null;
+            	   				if(need_rec) {
+            	   					outfile = makeFilename();
+            	   				}
+            	   				auto_answer(aa_file+".wav",outfile);
                    	   			return;
-            	   			}
-            	   			if(ea_file == null) {
-               	   				SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-               	   				ea_file = sts.getString("ea_file", null);
-               	   			}
-            	   			if(ea_file != null) {
-            	   				auto_answer(ea_file);
-            	   				return;
             	   			}
             	   			if(report != null) report += ", no sound file for "+s+", trying default";
             	   			// fall through to default sound file 
@@ -710,8 +732,10 @@ public class RVoixSrv extends Service {
             	   		inc_number = "unknown";
             	   		call_type = CType.INCOMING_NONUMBER;
             	   		call_proc = unk_proc;
+            	   		Log.dbg("default call_proc = " + call_proc );
             	   	}
-            	   	
+            	    ////////////////////// action determined for all call types. ///////////////////////
+            	    ////////// Perform specific tasks to be done before the phone is off-hook //////////
         	   		Log.msg("CallReceiver: new incoming call " + inc_number);
 	   				switch(call_proc) {
    						case INCOMING_ACT_HUP:
@@ -738,8 +762,10 @@ public class RVoixSrv extends Service {
    							if(report != null) log.write(report + ", query user");
    							break;
    						case INCOMING_ACT_AUTOANSWER:
-   	                	   	String aa_file = null;
-   	                	   	switch(call_type) {
+   						case INCOMING_ACT_AUTOANSWER_RECORD:
+   							String aa_file = null;
+   	                	   	String rec_file = null;
+   							switch(call_type) {
    	                	   		case INCOMING_NONUMBER:
    	                	   			if(un_file == null) {
    	                	   				SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
@@ -760,13 +786,15 @@ public class RVoixSrv extends Service {
    	                	   			aa_file = nc_file; break;
    	                	   		default: break;	
    	                	   	}
-   	                	   	auto_answer(aa_file);
+   	                	   	if(call_proc == INCOMING_ACT_AUTOANSWER_RECORD) rec_file = makeFilename();
+   	                	   	auto_answer(aa_file, rec_file);
    	                		break;
 	   				}
 
                } else if(s.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
 
-            	   	if(call_proc == INCOMING_ACT_AUTOANSWER && out_number == null) return;
+            	   	if((call_proc == INCOMING_ACT_AUTOANSWER || call_proc == INCOMING_ACT_AUTOANSWER_RECORD) 
+            	   			&& out_number == null) return;
             	   	start_time = 0;
         	   		
             	   	switch(call_type) {
@@ -833,7 +861,13 @@ public class RVoixSrv extends Service {
        	    		
                } else if(s.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
             	   	
+            	   	if(call_proc == INCOMING_ACT_AUTOANSWER_RECORD && out_number == null) {
+            	   		stopRecord(srv_mode | 2);	// built-in in the library
+            	   		set_defaults();
+            	   		return;
+            	   	}
             	   	if(call_proc == INCOMING_ACT_AUTOANSWER && out_number == null) return;
+            	   	
             	   	if(ask_incall_started || ask_in_progress) {
        	    			Log.msg("stopping AskActivity");
        	    			broadcastActivities(CBack.DONE);
@@ -876,22 +910,33 @@ public class RVoixSrv extends Service {
        	    		}
    	    			start_time = 0;
        	    		set_defaults();
-               } 
+               }
+           } catch (Exception cause) {
+        	    StackTraceElement elements[] = cause.getStackTrace();
+        	    if(logging && log != null) { 
+        	    	for (int i = 0, n = elements.length; i < n; i++) {       
+        	    		log.write(">>> " + elements[i].getFileName() + ":" + 
+        	    				elements[i].getLineNumber() + ">> " + elements[i].getMethodName() + "()");
+        	    	}
+        	    }	
+        	}
 		}
-		private void auto_answer(String aa_file) {
+		
+		
+		private void auto_answer(String aa_file, String rec_file) {
        	   	if(aa_file != null && (new File(aa_file)).exists()) {
        	   		telephony.invoke("answerRingingCall");
        	   		telephony.invoke("silenceRinger");
-       	   		answerCall(aa_file);
-       	   		Log.msg("number " + inc_number + ": call auto answered");
-       	   		if(report != null) log.write(report + ", auto answered");
+       	   		answerCall(aa_file, rec_file, boost_dn);
+       	   		Log.msg("number " + inc_number + ": call auto answered, rec_file=" + rec_file);
+       	   		if(report != null) log.write(report + ", auto answered, rec_file=" + rec_file);
        	   	} else {
        	   		Log.msg("number " + inc_number + ": auto answer skipped: no playback file");
        	   		if(report != null) log.write(report + ", auto answer skipped: no playback file");
        	   	}
 		}
 	}
-
+	
 	/////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////
 	private class WaitConfirm extends Thread {
@@ -1099,7 +1144,7 @@ public class RVoixSrv extends Service {
 			for(int i = 0; i < filez.length; i++) {
 				String s = filez[i].toString();
 				String q = s.substring(com.voix.Browser.dirlen);
-				if((s.endsWith(".wav") || s.endsWith(".mp3")) && (q.startsWith("I-") || q.startsWith("O-"))) {
+				if((s.endsWith(".wav") || s.endsWith(".mp3")) && (q.startsWith("I-") || q.startsWith("O-")|| q.startsWith("A-"))) {
 					if(favs.contains(s)) {
 				//		Log.msg(s + " in favourites, skipped.");
 						continue;
