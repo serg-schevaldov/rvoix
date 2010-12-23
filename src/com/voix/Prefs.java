@@ -147,6 +147,7 @@ public class Prefs extends PreferenceActivity
 		else if(s.compareTo("4")==0) return 4;
 		else if(s.compareTo("5")==0) return 5;
 		else if(s.compareTo("6")==0) return 6;
+		else if(s.compareTo("7")==0) return 7;
 		return 0;
 	}
 	
