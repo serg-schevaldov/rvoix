@@ -3,7 +3,7 @@
     
 <string name="app_name">rVoix</string>
 
-<string name="SBuild">rVoix: Версия 1.06 Сборка 16</string>
+<string name="SBuild">rVoix: Версия 1.06 Сборка 26</string>
 
 <string name="RRMode">Запустить сервис</string>
 <string name="Settings">Настройки</string>
@@ -215,6 +215,7 @@
 </string-array>
 
 <string name="SChtype">Изменить тип</string>
+<string name="SSelectType">Выберите тип</string>
 <string name="SEdit">Изменить номер</string>
 <string name="SEdit1">Правка номера</string>
 <string name="SSelList">Выбор списка</string>
@@ -223,8 +224,7 @@
 <string name="TNumAdded">Номер добавлен.</string>
 <string name="TAlreadyPresents">уже в списке.</string>
 <string name="TNumsAdded">Добавлено номеров:</string>
-
-
+<string name="TNothingAdded">Ничего не добавлено.</string>
 <string name="TNothingSelected">Ничего не выбрано.</string>
 
 <string name="SDebuggingGroup">Отладочные опции</string>

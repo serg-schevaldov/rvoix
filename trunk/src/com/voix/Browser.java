@@ -166,14 +166,14 @@ public class Browser extends ListActivity {
 		Log.dbg("resetAdapter(): entry");
 		adapter = new ListLineAdapter(this);
 		if(full) {
-			Log.msg("adapter: full reset");
+			Log.dbg("adapter: full reset");
 			favs.read();
 			adapter = new ListLineAdapter(this);
 			setAdapter(filter);
 			flist.invalidateViews();
 			firstVisible = 0;
 		} else {
-			Log.msg("adapter: partial reset");
+			Log.dbg("adapter: partial reset");
 			setListAdapter(adapter);
 		}
 		flist.setSelection(firstVisible);

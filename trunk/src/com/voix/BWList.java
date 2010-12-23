@@ -235,6 +235,10 @@ public class BWList extends ListActivity {
 	private final int PROCEED_CHG_ONE = 2;
 	private final int PROCEED_CHG_SEL = 3;
 	
+	private final int INP_ADD_PHONE_LIST = 0;
+	private final int INP_SAVE_TO_FILE = 1;
+	private final int INP_EDIT_PHONE = 2;
+	
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		Log.dbg("onOptionsItemSelected()");
@@ -282,10 +286,10 @@ public class BWList extends ListActivity {
 				return true;
 			case R.id.AddManually:
 				if(list_color > FContentList.WMODE) select_type_and_proceed(PROCEED_INPUT0);
-				else input_dialog(0);
+				else input_dialog(INP_ADD_PHONE_LIST);
 				return true;
 			case R.id.SaveList:
-				input_dialog(1);
+				input_dialog(INP_SAVE_TO_FILE);
 				return true;
 			case R.id.LoadList:
 				if(bwlist.dirty) saveBWlist();
@@ -347,7 +351,7 @@ public class BWList extends ListActivity {
 						callContSel();
 						break;
 					case PROCEED_INPUT0:
-						input_dialog(0);
+						input_dialog(INP_ADD_PHONE_LIST);
 						break;
 					case PROCEED_CHG_ONE:
 						ch_type_lpressed();
@@ -372,7 +376,7 @@ public class BWList extends ListActivity {
 		
 		if(list_color == FContentList.BMODE) {
 			dialog.setContentView(R.layout.dialog_bk_type);
-			dialog.setTitle(R.string.SOverType);
+			dialog.setTitle(R.string.SSelectType);
 			
 			btn = (Button) dialog.findViewById(R.id.ButtonH);
 			set_chtype_listener(dialog,btn,FContentList.TYPE_H, id);
@@ -383,7 +387,7 @@ public class BWList extends ListActivity {
 		} else {
 			
 			dialog.setContentView(R.layout.dialog_over_type);
-			dialog.setTitle(R.string.SChtype);
+			dialog.setTitle(R.string.SSelectType);
 			
 			btn = (Button) dialog.findViewById(R.id.ButtonR);
 			set_chtype_listener(dialog,btn,FContentList.TYPE_R, id);
@@ -441,7 +445,7 @@ public class BWList extends ListActivity {
 		btn.setOnClickListener(new OnClickListener() {
            public void onClick(View v) {
                dialog.dismiss();
-               input_dialog(2);
+               input_dialog(INP_EDIT_PHONE);
            }
 		});
 		if(list_color > FContentList.WMODE) {
@@ -456,7 +460,7 @@ public class BWList extends ListActivity {
 		}
 		dialog.show();
 	}
-
+	
 	private void input_dialog(int id) {	   
 		
 		if(id == 0 && selected_type == 0) return;
@@ -464,15 +468,15 @@ public class BWList extends ListActivity {
 		final Context context = this;
 		
 		switch(id) {
-			case 0:	
+			case INP_ADD_PHONE_LIST:	
 				dialog.setContentView(R.layout.input_numbers); 
 				dialog.setTitle(R.string.SAddManual);
 				break;
-			case 1: 
+			case INP_SAVE_TO_FILE: 
 				dialog.setContentView(R.layout.input); 
 				dialog.setTitle(R.string.SSaveList);
 				break;
-			case 2: 
+			case INP_EDIT_PHONE: 
 				dialog.setContentView(R.layout.dialog_edit_number); 
 				dialog.setTitle(R.string.SEdit1);
 				break;
@@ -486,7 +490,7 @@ public class BWList extends ListActivity {
 		 
 		btn = (Button) dialog.findViewById(R.id.ButtonYes);
 		switch (id) {
-			case 0:	/* add phone list */
+			case INP_ADD_PHONE_LIST:	/* add phone list */
 				btn.setOnClickListener(new OnClickListener() {
 				  public void onClick(View v) {
 					String txt = edt.getText().toString();
@@ -505,6 +509,7 @@ public class BWList extends ListActivity {
 								String cn = ctx.findInContacts(s);
 								if(cn == null) cn = nic; 
 								lines.add(new ListLine(s+"\n("+cn+")",cn,s,selected_type));
+								phones.add(s);
 								n++;
 							}
 						}
@@ -512,13 +517,17 @@ public class BWList extends ListActivity {
 							bwlist.dirty = true;
 							Collections.sort(lines);
 							setListAdapter(adapter);
-						}	
+							String s = getString(R.string.TNumsAdded);
+							s += " " + n;
+							Toast.makeText(v.getContext(), s, Toast.LENGTH_SHORT).show();
+						} else Toast.makeText(v.getContext(), R.string.TNothingAdded, Toast.LENGTH_SHORT).show();	
 					}
+					Log.dbg("lines = " + lines.size());
 					dialog.dismiss();
 				  }
 				});
 				break;
-			case 1:		/* save to file */
+			case INP_SAVE_TO_FILE:		/* save to file */
 				btn.setOnClickListener(new OnClickListener() {
 				  public void onClick(View v) {
 					if(bwlist.dirty) saveBWlist();
@@ -533,7 +542,7 @@ public class BWList extends ListActivity {
 				   }
 				});
 				break;
-			case 2:	/* edit single phone */
+			case INP_EDIT_PHONE:	/* edit single phone */
 				String s = lines.get(lpress).phone;
 				edt.setText(s);
 				btn.setOnClickListener(new OnClickListener() {
@@ -562,12 +571,6 @@ public class BWList extends ListActivity {
 				});
 				break;
 		}
-/*		btn = (Button) dialog.findViewById(R.id.ButtonNo);
-		btn.setOnClickListener(new OnClickListener() {
-           public void onClick(View v) {
-               dialog.dismiss();
-           }
-		}); */
 		dialog.show();
 	}
 

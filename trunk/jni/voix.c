@@ -130,7 +130,7 @@ void *record(void *init) {
     char file[256], *buff;
     int fd, fd_out, isup = (int) init;
     int err_count;
-	log_info("in %s thread", isup? "uplink" : "downlink");
+	log_info("entering %s thread", isup? "uplink" : "downlink");
 
 	if(!isup)  {
 	    pthread_mutex_lock(&mutty);
@@ -189,7 +189,7 @@ void *record(void *init) {
 	    int i = read(fd,buff,READ_SIZE);
 	    if(i < 0) {
 		err_count++;
-		log_err("read error in %s thread", isup ? "uplink":"downlink");
+		log_info("read error in %s thread", isup ? "uplink":"downlink");
 		if(err_count == MAX_ERR_COUNT) {
 		   log_err("max read err count in %s thread reached", isup ? "uplink":"downlink");	
 		   break;
@@ -204,7 +204,7 @@ void *record(void *init) {
 		}
 	    }	
 	}
-
+	log_info("exiting %s thread", isup ? "uplink":"downlink");
 	/* fd and fd_out still open: fd_out to be closed in encode() and fd in closeup() */
 
 	free(buff);
@@ -286,7 +286,6 @@ void *encode(void *init) {
 	close(fdo[1]);
 	pthread_create(&clsup,0,closeup,(void *) 1);
 
-	log_info("recorder threads complete, encoding");
 	gettimeofday(&start,0);
 
 	if((int) init < 0) {
@@ -648,7 +647,7 @@ void *encode_incoming(void *init) {
     struct timeval start, stop, tm;
     off_t off1, off_out;	
 	
-	log_info("in encode_incoming thread");
+	log_info("entering encode_incoming thread");
 	strcpy(fn,cur_file);
 
 	close(fdo[0]);
