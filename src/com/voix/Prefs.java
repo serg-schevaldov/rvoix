@@ -28,6 +28,9 @@ public class Prefs extends PreferenceActivity
 	private String fdir;
 	public 	static String fbPath = null;
 	
+	private final String []aa_files = {"un_file_a","cn_file_a","nc_file_a","ba_file_a","wa_file_a", 
+			"un_file_r","cn_file_r","nc_file_r","wa_file_r"};
+	
 	@Override
     protected void onCreate(Bundle savedInstanceState) {
 
@@ -74,8 +77,8 @@ public class Prefs extends PreferenceActivity
 		if(io > RVoixSrv.BMODE_LAST) io = RVoixSrv.BMODE_NONE;
 		m.setSummary(iw[io]);
 		
-		String []aa = {"edit_wlist","edit_blist","edit_ielist","edit_oelist"};
-		int []col = {FContentList.WMODE,FContentList.BMODE,FContentList.IEMODE,FContentList.OEMODE};
+		String []aa = {"edit_wlist","edit_blist","edit_ielist","edit_oelist","edit_aelist"};
+		int []col = {FContentList.WMODE,FContentList.BMODE,FContentList.IEMODE,FContentList.OEMODE,FContentList.AEMODE};
 		for(int i = 0; i < aa.length; i++) {
 			Preference p = screen.findPreference(aa[i]);
 			p.setSummary(getString((new File(fdir+FContentList.LIST_FILES[i])).exists() 
@@ -83,16 +86,14 @@ public class Prefs extends PreferenceActivity
 			set_pref_handler(p, "com.voix.BWList", col[i], BW_REQ_CODE);
 		}
 
-		String []bb = {"un_file","cn_file","nc_file","ba_file","wa_file"};
-		for(int i = 0; i < bb.length; i++) {
-			Preference p = screen.findPreference(bb[i]);
-			String s = settings.getString(bb[i], null);
+		for(int i = 0; i < aa_files.length; i++) {
+			Preference p = screen.findPreference(aa_files[i]);
+			String s = settings.getString(aa_files[i], null);
 			if(s == null) s = getString(R.string.SAANoFile);
 			else if(!(new File(s)).exists()) { // user deleted the file
-				settings.edit().remove(bb[i]).commit();
+				settings.edit().remove(aa_files[i]).commit();
 				s = getString(R.string.SAANoFile);
 			} else s = s.substring(20); // skip initial "/sdcard/voix/sounds/"
-
 			p.setSummary(s);
 			set_pref_handler(p, "com.voix.BWFilesBrowser", -1, AA_REQ_CODE+i);
 		}
@@ -129,7 +130,8 @@ public class Prefs extends PreferenceActivity
        	final int color = col;
        	final int req_code = req;
        	final String cl = new String(cls);
-		p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+		fbPath = null;
+       	p.setOnPreferenceClickListener(new OnPreferenceClickListener() {
        		@Override
        		public boolean onPreferenceClick(Preference preference) {
        			Intent intent = new Intent().setClassName("com.voix", cl);
@@ -190,7 +192,7 @@ public class Prefs extends PreferenceActivity
 				   prefs_changed = true;
 				   PreferenceScreen screen = getPreferenceScreen();
 				   Preference p;
-				   String[] lst = {"edit_wlist","edit_blist","edit_ielist","edit_oelist" };
+				   String[] lst = {"edit_wlist","edit_blist","edit_ielist","edit_oelist","edit_aelist" };
 				   for(int i = 0; i < lst.length; i++) {
 			   			p = screen.findPreference(lst[i]);
 			   			p.setSummary(getString((new File(fdir+FContentList.LIST_FILES[i])).exists() 
@@ -204,13 +206,12 @@ public class Prefs extends PreferenceActivity
 		           Log.dbg("user selected sound file: " + fname);
 				   prefs_changed = true;
 				   PreferenceScreen screen = getPreferenceScreen();
-				   String[] lst = {"un_file","cn_file","nc_file","ba_file","wa_file"};
 				   int i = requestCode - AA_REQ_CODE;
-				   Preference p = screen.findPreference(lst[i]);
+				   Preference p = screen.findPreference(aa_files[i]);
 				   p.setSummary(fbPath);
 				   SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
 				   SharedPreferences.Editor e = settings.edit();
-				   e.putString(lst[i], fname);
+				   e.putString(aa_files[i], fname);
 				   e.commit();
 			   }
 			   java.lang.System.gc();

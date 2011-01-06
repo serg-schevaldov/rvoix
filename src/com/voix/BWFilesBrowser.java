@@ -19,7 +19,7 @@ public class BWFilesBrowser extends ListActivity implements FilenameFilter	{
 	private int list_color = 0;
 	private String start = null;
 	private ArrayList<String> lines = new ArrayList<String>();
-	public static final String[]st = {".wlist",".blist",".ilist",".olist"};
+	public static final String[]st = {".wlist",".blist",".ilist",".olist", ".alist"};
 	File [] files = null;
 
 	@Override
@@ -74,7 +74,7 @@ public class BWFilesBrowser extends ListActivity implements FilenameFilter	{
 		if(pos < lines.size()) {
 			String s = lines.get(pos);
 	        if(list_color < 0) Prefs.fbPath = s;
-	        else BWList.fbPath = s;
+	        BWList.fbPath = s;
 	        setResult(1);
 	        finish();
 		}
@@ -92,6 +92,5 @@ public class BWFilesBrowser extends ListActivity implements FilenameFilter	{
         	return true;
         }
    };
-
 	
 }

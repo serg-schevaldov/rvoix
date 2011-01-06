@@ -91,21 +91,44 @@
 	  <PreferenceCategory
     	android:title="@string/SFDefaults">
   		<Preference
-			android:key="un_file"
-			android:title="@string/SUnknownNum"/>
-  		<Preference
-			android:key="cn_file"
+			android:key="cn_file_a"
 			android:title="@string/SContNum"/>
   		<Preference
-			android:key="nc_file"
+			android:key="nc_file_a"
 			android:title="@string/SNonContNum"/>
   		<Preference
-			android:key="ba_file"
+			android:key="un_file_a"
+			android:title="@string/SUnknownNum"/>
+  		<Preference
+			android:key="ba_file_a"
 			android:title="@string/SABlist"/>
   		<Preference
-			android:key="wa_file"
+			android:key="wa_file_a"
 			android:title="@string/SAWlist"/>
   	  </PreferenceCategory>
+  	  
+  	  <PreferenceCategory
+    	android:title="@string/SFDefaultsAR">
+  		<Preference
+			android:key="cn_file_r"
+			android:title="@string/SContNum"/>
+  		<Preference
+			android:key="nc_file_r"
+			android:title="@string/SNonContNum"/>
+  		<Preference
+			android:key="un_file_r"
+			android:title="@string/SUnknownNum"/>
+  		<Preference
+			android:key="wa_file_r"
+			android:title="@string/SAWlist"/>
+  	  </PreferenceCategory>
+
+  	  <PreferenceCategory
+    	android:title="@string/SExFileList">
+		<Preference
+			android:key="edit_aelist"
+			android:title="@string/SExList"/>
+  	  </PreferenceCategory>	
   	</PreferenceScreen>
 
   </PreferenceCategory>

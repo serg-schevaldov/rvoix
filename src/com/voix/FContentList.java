@@ -18,17 +18,18 @@ public class FContentList extends ArrayList <String> {
 	private static final long serialVersionUID = 1L;
 
 	public static final String[] LIST_FILES = {
-		"wlist", "blist", "ilist", "olist"
+		"wlist", "blist", "ilist", "olist", "alist"
 	};
 	
 	public static final String[] LIST_FILES_EXT_PREFIXES = {
-		"/sdcard/voix/.wlist", "/sdcard/voix/.blist", "/sdcard/voix/.ilist", "/sdcard/voix/.olist"
+		"/sdcard/voix/.wlist", "/sdcard/voix/.blist", "/sdcard/voix/.ilist", "/sdcard/voix/.olist", "/sdcard/voix/.alist"
 	};
 	
 	public static final int WMODE = 0;
 	public static final int BMODE = 1;
 	public static final int IEMODE = 2;
 	public static final int OEMODE = 3;
+	public static final int AEMODE = 4;
 	
 	public static final char TYPE_NONE = 0;
 	public static final char TYPE_H = 'h';	// hang up
@@ -40,6 +41,8 @@ public class FContentList extends ArrayList <String> {
 	public static final char TYPE_Q = 'q';	// auto answer
 	public static final char TYPE_X = 'x';	// auto answer+record
 	public static final char TYPE_Z = 'z';	// any type
+	public static final char TYPE_Q2 = 'Q';	// string following tab after TYPE_Q
+	public static final char TYPE_X2 = 'X';	// string following tab after TYPE_X
 	
 	public static final String FAVS_FILE = "/sdcard/voix/.favourites";
 	
@@ -189,7 +192,17 @@ public class FContentList extends ArrayList <String> {
 				continue;
 			}
 			String []ss = s.split("\t");
-			if(ss.length >= 2 && (ss[1].charAt(0) == type || type == TYPE_Z)) a.add(new String(ss[0]));
+			int len = ss.length;
+			if(len == 2) {
+				if(ss[1].charAt(0) == type || type == TYPE_Z) a.add(new String(ss[0]));
+			} else if(len == 3) {
+				switch(type) {
+					case TYPE_Q2: if(ss[1].charAt(0) == TYPE_Q) a.add(new String(ss[2])); break;
+					case TYPE_X2: if(ss[1].charAt(0) == TYPE_X) a.add(new String(ss[2])); break;
+					case TYPE_Q:  if(ss[1].charAt(0) == TYPE_Q) a.add(new String(ss[0])); break;
+					case TYPE_X:  if(ss[1].charAt(0) == TYPE_X) a.add(new String(ss[0])); break;
+				}
+			} 
 		}
 		// Log.dbg("get_array() returning " + a.size());
 		return a;

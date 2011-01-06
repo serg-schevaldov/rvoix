@@ -42,13 +42,15 @@ public class BWList extends ListActivity {
 		public String dname;
 		public String name;
 		public String phone;
+		public String aa_file;
 		boolean selected;
 		char type;
-		ListLine(String dispname, String cname, String tel, char t) {
+		ListLine(String dispname, String cname, String tel, String file, char t) {
 			dname = dispname;
 			name = cname;
 			phone = tel;
 			selected = false;
+			aa_file = file;
 			type = t;
 		}
 		@Override
@@ -147,8 +149,16 @@ public class BWList extends ListActivity {
 			String nic = getString(R.string.SNotInContacts);
 			for(int i = 0; i < bwlist.size(); i++) {
 					String p = bwlist.get(i);
-					char type = 0;
-					if(list_color > FContentList.WMODE) {
+					String pp = null;
+					char type = FContentList.TYPE_NONE;
+					if(list_color == FContentList.AEMODE) {
+						String ss[] = p.split("\t");
+						if(ss.length != 3 || ss[2] == null) continue;
+						if(!(new File("/sdcard/voix/sounds/"+ss[2])).exists()) continue;
+						type = ss[1].charAt(0);
+						pp = ss[2];
+						p = ss[0]; //.trim();
+					} else if(list_color != FContentList.WMODE) {	
 						String ss[] = p.split("\t");
 						if(ss.length != 2 || ss[1] == null) {
 							switch(list_color) {
@@ -161,14 +171,16 @@ public class BWList extends ListActivity {
 									break;
 							}
 						} else type = ss[1].charAt(0);
-						p = ss[0].trim(); 
+						p = ss[0]; //.trim(); 
 					}
 					String n = ctx.findInContacts(p);
 					if(n == null) n = nic;
 					String d = p + "\n(" + n + ")";
 					if(!phones.contains(p)) {
+						if(list_color == FContentList.AEMODE) d += "\n" + pp;
 						phones.add(p);
-						lines.add(new ListLine(d,n,p,type));
+						// Log.dbg("adding *" + d + "*");
+						lines.add(new ListLine(d,n,p,pp,type));
 					} else {
 						Log.dbg(p + " skipped, phone already exists" );
 						bwlist.dirty = true;
@@ -217,21 +229,25 @@ public class BWList extends ListActivity {
 		  // nothing doing.
 	  }
    	};
-
 	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.bwmenu, menu);
         Log.dbg("onCreateOptionsMenu()");
-        if(list_color == FContentList.WMODE) menu.findItem(R.id.ChangeType).setEnabled(false);
+        if(list_color == FContentList.WMODE) menu.findItem(R.id.ChangeType).setEnabled(false); 
+        else if(list_color == FContentList.AEMODE) menu.findItem(R.id.ChangeType).setTitle(R.string.SChFileAndType);
         return true;
     }
 	private final int REQ_CODE_LOAD	= 11;
 	private final int REQ_CODE_CONT = 12;
+	private final int REQ_CODE_CALL_CONTS = 13;
+	private final int REQ_CODE_INPUT_LIST = 14;
+	private final int REQ_CODE_CHG_ONE = 15;
+	private final int REQ_CODE_CHG_SEL = 16;
 	
 	private final int PROCEED_CALL_CONTS = 0;
-	private final int PROCEED_INPUT0 = 1;
+	private final int PROCEED_INPUT_LIST = 1;
 	private final int PROCEED_CHG_ONE = 2;
 	private final int PROCEED_CHG_SEL = 3;
 	
@@ -245,6 +261,7 @@ public class BWList extends ListActivity {
 		
 		switch (item.getItemId()) {
 			case R.id.DelSelected:
+				Log.dbg("DelSelected");
 				bwlist.dirty = true;
 				Iterator<String> it = phones.iterator();
 				Iterator<ListLine> iter = lines.iterator();
@@ -265,33 +282,40 @@ public class BWList extends ListActivity {
 				} else Toast.makeText(this, R.string.TNothingSelected, Toast.LENGTH_SHORT).show();
 				return true;
 			case R.id.ChangeType:
+				Log.dbg("ChangeType");
 				for(int i = 0; i < lines.size(); i++) {
 					if(lines.get(i).selected) {
-						select_type_and_proceed(PROCEED_CHG_SEL);
+						if(list_color == FContentList.AEMODE) select_file_and_proceed(REQ_CODE_CHG_SEL);
+						else select_type_and_proceed(PROCEED_CHG_SEL);
 						return true;
 					}
 				}
 				Toast.makeText(this, R.string.TNothingSelected, Toast.LENGTH_SHORT).show();
 				return true;
 			case R.id.AddFromContacts:
+				Log.dbg("AddFromContacts");
 				if(bwlist.dirty) saveBWlist();
-				if(list_color > FContentList.WMODE) {
-					select_type_and_proceed(PROCEED_CALL_CONTS);
-				} else {
+				if(list_color == FContentList.WMODE) {
 					Intent intent = new Intent().setClassName("com.voix", "com.voix.ContSel");
 					intent.putExtra("list_color", list_color);
 					intent.putExtra("type", 0);
+					if(list_color == FContentList.AEMODE) intent.putExtra("aa_file", selected_file);
 					startActivityForResult(intent, REQ_CODE_CONT);
-				}	
+				} else if(list_color == FContentList.AEMODE) select_file_and_proceed(REQ_CODE_CALL_CONTS);
+				  else select_type_and_proceed(PROCEED_CALL_CONTS);	
 				return true;
 			case R.id.AddManually:
-				if(list_color > FContentList.WMODE) select_type_and_proceed(PROCEED_INPUT0);
-				else input_dialog(INP_ADD_PHONE_LIST);
+				Log.dbg("AddManually");
+				if(list_color == FContentList.WMODE) input_dialog(INP_ADD_PHONE_LIST);
+				else if(list_color == FContentList.AEMODE) select_file_and_proceed(REQ_CODE_INPUT_LIST);
+				else select_type_and_proceed(PROCEED_INPUT_LIST);
 				return true;
 			case R.id.SaveList:
+				Log.dbg("SaveList");
 				input_dialog(INP_SAVE_TO_FILE);
 				return true;
 			case R.id.LoadList:
+				Log.dbg("LoadList");
 				if(bwlist.dirty) saveBWlist();
 				Intent intent = new Intent().setClassName("com.voix", "com.voix.BWFilesBrowser");
 				intent.putExtra("list_color", list_color);
@@ -302,12 +326,14 @@ public class BWList extends ListActivity {
 	}
 	
 	private char selected_type = FContentList.TYPE_NONE;
-
+	private String selected_file = null;
+	
 	private void callContSel() {
 		Log.dbg("callContSel()");
 		Intent intent = new Intent().setClassName("com.voix", "com.voix.ContSel");
 		intent.putExtra("list_color", list_color);
 		intent.putExtra("type", selected_type);
+		if(list_color == FContentList.AEMODE) intent.putExtra("aa_file", selected_file);
 		startActivityForResult(intent, REQ_CODE_CONT);
 	}
 	
@@ -335,7 +361,33 @@ public class BWList extends ListActivity {
 			flist.setSelection(firstVisible);
 		} else Toast.makeText(this, R.string.TNothingSelected, Toast.LENGTH_SHORT).show();
 	}
+
+	private void ch_file(int i) {
+		if(selected_file == null || list_color != FContentList.AEMODE) return;
+		ListLine ll = lines.get(i);
+		ll.aa_file = new String(selected_file);
+		if(list_color != FContentList.AEMODE) ll.selected = false;
+		ll.dname = ll.phone + "\n(" + ll.name + ")\n" + ll.aa_file;
+	}
 	
+	private void ch_file_selected() {
+		if(selected_file == null || list_color != FContentList.AEMODE) return;
+		int qq = 0;
+		for(int i = 0; i < lines.size(); i++) {
+			if(lines.get(i).selected) {
+				//lines.get(i).aa_file = new String(selected_file);
+				//lines.get(i).selected = false;
+				ch_file(i);
+				qq++;
+			}
+		}
+		if(qq > 0) {
+			bwlist.dirty = true;
+			adapter = new ListLineAdapter(this);
+			setListAdapter(adapter);
+			flist.setSelection(firstVisible);
+		} else Toast.makeText(this, R.string.TNothingSelected, Toast.LENGTH_SHORT).show();
+	}
 
 	private void set_chtype_listener(Dialog dlg, Button b, char t, int proc_type) {
 		final Dialog dialog = dlg;
@@ -350,7 +402,7 @@ public class BWList extends ListActivity {
 					case PROCEED_CALL_CONTS: 	
 						callContSel();
 						break;
-					case PROCEED_INPUT0:
+					case PROCEED_INPUT_LIST:
 						input_dialog(INP_ADD_PHONE_LIST);
 						break;
 					case PROCEED_CHG_ONE:
@@ -364,6 +416,13 @@ public class BWList extends ListActivity {
 				}
 			}
 		});
+	}
+
+	private void select_file_and_proceed(int id) {
+		selected_file = null;
+		Intent intent = new Intent().setClassName("com.voix", "com.voix.BWFilesBrowser");
+			intent.putExtra("list_color", -1);
+			startActivityForResult(intent, id);
 	}
 	
 	private void select_type_and_proceed(int proc_type) {	   
@@ -384,6 +443,11 @@ public class BWList extends ListActivity {
 			btn = (Button) dialog.findViewById(R.id.ButtonM);
 			set_chtype_listener(dialog,btn,FContentList.TYPE_M, id);
 
+		} else if(list_color == FContentList.AEMODE) {
+			dialog.setContentView(R.layout.dialog_over_type_aa);
+			dialog.setTitle(R.string.SSelectType);
+			btn = (Button) dialog.findViewById(R.id.ButtonX);
+			set_chtype_listener(dialog,btn,FContentList.TYPE_X, id);
 		} else {
 			
 			dialog.setContentView(R.layout.dialog_over_type);
@@ -407,7 +471,8 @@ public class BWList extends ListActivity {
 		}
 		
 		btn = (Button) dialog.findViewById(R.id.ButtonQ);
-		if(list_color == FContentList.BMODE || list_color == FContentList.IEMODE) {
+		if(list_color == FContentList.BMODE || list_color == FContentList.IEMODE
+				|| list_color == FContentList.AEMODE) {
 			set_chtype_listener(dialog,btn,FContentList.TYPE_Q, id);
 		} else btn.setEnabled(false);
 		
@@ -423,8 +488,16 @@ public class BWList extends ListActivity {
 	private void ctx_menu() {
 		final Dialog dialog = new Dialog(this);
 		Button btn;
-		
-		dialog.setContentView(list_color > FContentList.WMODE ? R.layout.dialog_bw : R.layout.dialog_bw1);
+		int dlg = 0;
+		switch(list_color) {
+			case FContentList.WMODE:
+				dlg = R.layout.dialog_bw1; break;
+			case FContentList.AEMODE:
+				dlg = R.layout.dialog_bw2; break;
+			default:
+				dlg = R.layout.dialog_bw; break;
+		}		
+		dialog.setContentView(dlg);
 		dialog.setTitle(R.string.SAction);
 
 		btn = (Button) dialog.findViewById(R.id.ButtonDelete);
@@ -448,6 +521,16 @@ public class BWList extends ListActivity {
                input_dialog(INP_EDIT_PHONE);
            }
 		});
+		if(list_color == FContentList.AEMODE) {
+			btn = (Button) dialog.findViewById(R.id.ButtonChFile);
+			btn.setOnClickListener(new OnClickListener() {
+	           public void onClick(View v) {
+	               dialog.dismiss();
+	               Log.dbg("calling change file()");
+	               select_file_and_proceed(REQ_CODE_CHG_ONE);
+	           }
+			});
+		} 
 		if(list_color > FContentList.WMODE) {
 			btn = (Button) dialog.findViewById(R.id.ButtonChType);
 			btn.setOnClickListener(new OnClickListener() {
@@ -463,12 +546,17 @@ public class BWList extends ListActivity {
 	
 	private void input_dialog(int id) {	   
 		
-		if(id == 0 && selected_type == 0) return;
 		final Dialog dialog = new Dialog(this);
 		final Context context = this;
+		Log.dbg("Input dialog " + id);
 		
 		switch(id) {
-			case INP_ADD_PHONE_LIST:	
+			case INP_ADD_PHONE_LIST:
+				if(list_color == FContentList.AEMODE) {
+					if(selected_file == null) return;
+				} else if(list_color != FContentList.WMODE) {
+					if(selected_type == FContentList.TYPE_NONE) return;
+				}
 				dialog.setContentView(R.layout.input_numbers); 
 				dialog.setTitle(R.string.SAddManual);
 				break;
@@ -508,7 +596,9 @@ public class BWList extends ListActivity {
 							if(s.length()>1) {
 								String cn = ctx.findInContacts(s);
 								if(cn == null) cn = nic; 
-								lines.add(new ListLine(s+"\n("+cn+")",cn,s,selected_type));
+								String dn = s+"\n("+cn+")";
+								if(selected_file != null) dn += '\n' + selected_file;
+								lines.add(new ListLine(dn,cn,s,selected_file,selected_type));
 								phones.add(s);
 								n++;
 							}
@@ -578,9 +668,9 @@ public class BWList extends ListActivity {
 		bwlist.clear();
 		Log.dbg("saving list, size="+lines.size());
 		for(ListLine ll : lines) {
-			//	Log.dbg("wrote " + ll.phone);
-			if(list_color > FContentList.WMODE ) bwlist.add(ll.phone+'\t'+ll.type);
-			else bwlist.add(ll.phone);
+			if(list_color == FContentList.WMODE ) bwlist.add(ll.phone);
+			else if(list_color == FContentList.AEMODE) bwlist.add(ll.phone+'\t'+ll.type+'\t'+ll.aa_file);
+			else bwlist.add(ll.phone+'\t'+ll.type);
 		}
 		bwlist.write();
 		setResult(1);
@@ -595,14 +685,17 @@ public class BWList extends ListActivity {
 	@Override
 	protected void  onActivityResult(int requestCode, int resultCode, Intent  data) {
 	   super.onActivityResult(requestCode, resultCode, data);
-	   Log.msg("onActivityResult() code="+requestCode+", result="+resultCode);
+	   Log.msg("onActivityResult() code="+requestCode+", result="+resultCode+", fbPath="+fbPath);
 	   if(resultCode != 1) return; 
-	   if(requestCode == REQ_CODE_CONT){	// load from contacts
+	   switch(requestCode) {
+	   	case REQ_CODE_CONT:
+	   		// load from contacts
 	        bwlist.read();
 	        adapter = new ListLineAdapter(this);
 	        setAdapter();
 	        flist.invalidateViews();
-	   } else if(requestCode == REQ_CODE_LOAD){	// load from file
+	        break;
+	   	case REQ_CODE_LOAD:	// load from file
 		   	if(fbPath == null) return;
            	String fname = "/sdcard/voix/"+BWFilesBrowser.st[list_color]+fbPath;
            	File f = new File(fname);
@@ -615,10 +708,39 @@ public class BWList extends ListActivity {
            	bwlist.dirty = true;
   			adapter = new ListLineAdapter(this);
 		   	setAdapter();
+		   	break;
+	   	case REQ_CODE_CALL_CONTS:
+		   	if(fbPath == null) return;	
+		   	selected_file = fbPath; 
+		   	select_type_and_proceed(PROCEED_CALL_CONTS);
+		   	//	callContSel();
+		   	break;
+	   	case REQ_CODE_INPUT_LIST:
+		   	if(fbPath == null || list_color != FContentList.AEMODE) return;
+		   	selected_file = fbPath; 
+		   	//input_dialog(INP_ADD_PHONE_LIST);
+		   	select_type_and_proceed(PROCEED_INPUT_LIST);
+		   	break;
+	   	case REQ_CODE_CHG_ONE:
+		   	if(fbPath == null || list_color != FContentList.AEMODE) return;	
+		   	selected_file = fbPath; 
+			ch_file(lpress);
+			bwlist.dirty = true;
+	 	   	flist.invalidateViews();
+	   		break;
+	   	case REQ_CODE_CHG_SEL:
+		   	if(fbPath == null || list_color != FContentList.AEMODE) return;
+		   	selected_file = fbPath; 
+		   	ch_file_selected();
+		   	select_type_and_proceed(PROCEED_CHG_SEL);
+		   	break;
+		default:
+			 break;
 	   }
 	   Log.dbg("size onActivityResult="+bwlist.size());
 	   setResult(1);
 	}
+	
 	
 }
 	
