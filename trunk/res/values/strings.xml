@@ -3,7 +3,7 @@
     
 <string name="app_name">rVoix</string>
 
-<string name="SBuild">rVoix: Version 1.06 Build 26</string>
+<string name="SBuild">rVoix: Version 1.06 Build 57</string>
 
 <string name="RRMode">Start service</string>
 <string name="Settings">Settings</string>
@@ -203,6 +203,7 @@
 <item>@string/SBLBlist</item>
 <item>@string/SBExceptions</item>
 <item>@string/SBExceptions</item>
+<item>@string/SBExceptions</item>
 </string-array>
 
 <string-array name="OverTypes">
@@ -248,7 +249,8 @@
 <string name="SAANoFile">File not set</string>
 <string name="SAASndFile">Select sound file</string>
 
-<string name="SFDefaults">Default files</string>
+<string name="SFDefaults">Default files [autoanswer mode]</string>
+<string name="SFDefaultsAR">Default files [autoanswer+rec mode]</string>
 
 <string name="SCantCreateSndDir">Cannot create "/sdcard/voix/sounds"</string>
 <string name="StartRecord">Start</string>
@@ -264,5 +266,9 @@
 <string name="SCantSave">Error saving a file</string>
 <string name="SLastNotSaved">Last file was not saved!</string>
 
+<string name="SChFile">Change file</string>
+<string name="SChFileAndType">Change file and type</string>
+<string name="SExFileList">Files for specific numbers</string>
+<string name="SExList">List of exceptions</string>
 </resources>
 

@@ -25,8 +25,9 @@ public class ContSel extends ListActivity {
     private FContentList bwflist = null;
     private ListView flist;
     private int list_color = 0;
-    private char type = 0;
+    private char type = FContentList.TYPE_NONE;
     private ArrayList<String> phones = null;
+    private String aa_file = null;
     
 	private class ListLine implements Comparable<ListLine> {
 		public String dname;
@@ -77,6 +78,12 @@ public class ContSel extends ListActivity {
         Intent intie = getIntent();
         list_color = intie.getIntExtra("list_color",0);
         type = intie.getCharExtra("type",FContentList.TYPE_NONE);
+        if(list_color == FContentList.AEMODE) {
+        	aa_file = intie.getStringExtra("aa_file");
+        	if(aa_file == null) {
+        		finish(); return;
+        	}
+        }
         
         Log.dbg("onCreate(): entry, col=" + list_color + ", type=" + type);
         
@@ -182,12 +189,13 @@ public class ContSel extends ListActivity {
 	
 	@Override
 	public void finish() {
-		if(bwflist.dirty) {
+		if(bwflist != null && bwflist.dirty) {
 			int i = 0;
 			for(ListLine ll : contacts) {
 				if(ll.selected && !phones.contains(ll.phone)) {
 					Log.dbg("added " + ll.phone + " to "+ FContentList.LIST_FILES[list_color]);
 					if(list_color == FContentList.WMODE) bwflist.add(ll.phone);
+					else if(list_color == FContentList.AEMODE ) bwflist.add(ll.phone+'\t'+type+'\t'+aa_file);
 					else bwflist.add(ll.phone+'\t'+type);
 					phones.add(ll.phone);
 					i++;

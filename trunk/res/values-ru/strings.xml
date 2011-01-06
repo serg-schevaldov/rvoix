@@ -3,7 +3,7 @@
     
 <string name="app_name">rVoix</string>
 
-<string name="SBuild">rVoix: Версия 1.06 Сборка 26</string>
+<string name="SBuild">rVoix: Версия 1.06 Сборка 57</string>
 
 <string name="RRMode">Запустить сервис</string>
 <string name="Settings">Настройки</string>
@@ -21,7 +21,6 @@
 <string name="OutCalls">Запись исходящих звонков</string>
 
 <string name="SInCalls">Входящие звонки</string>
-
 
 <string name="SUnknownNum">Звонки без номера</string>
 <string name="UnknownNum">Действия, если номер не определен</string>
@@ -103,7 +102,6 @@
 <string name="SBootup">Запускать после перезагрузки</string>
 
 <string name="SAbout">О программе</string>
-
 
 <string name="SSound">Подъем громкости</string>
 <string name="SBoostUp">Выходной канал</string>
@@ -205,6 +203,7 @@
 <item>@string/SBLBlist</item>
 <item>@string/SBExceptions</item>
 <item>@string/SBExceptions</item>
+<item>@string/SBExceptions</item>
 </string-array>
 
 <string-array name="OverTypes">
@@ -250,7 +249,8 @@
 <string name="SAANoFile">Файл не задан</string>
 <string name="SAASndFile">Выбор аудиофайла</string>
 
-<string name="SFDefaults">Файлы по умолчанию</string>
+<string name="SFDefaults">Файлы по умолчанию [автоответ]</string>
+<string name="SFDefaultsAR">Файлы по умолчанию [автоответ+запись]</string>
 
 <string name="SCantCreateSndDir">Ошибка создания "/sdcard/voix/sounds"</string>
 <string name="StartRecord">Начать запись</string>
@@ -266,6 +266,9 @@
 <string name="SCantSave">Ошибка сохранения файла</string>
 <string name="SLastNotSaved">Последний файл не был сохранен!</string>
 
-
+<string name="SChFile">Изменить файл</string>
+<string name="SChFileAndType">Изменить файл и тип</string>
+<string name="SExFileList">Файлы для конкретных номеров</string>
+<string name="SExList">Список исключений</string>
 </resources>
 

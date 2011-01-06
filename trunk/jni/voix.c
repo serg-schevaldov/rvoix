@@ -55,8 +55,9 @@ static jobject giface;
 void *record(void *);
 void *encode(void *);
 void *encode_incoming(void *);
-
+int last_codec;
 static pthread_mutex_t mutty;
+void stop_record(JNIEnv* env, jobject obj, jint codec);
 
 int start_record(JNIEnv* env, jobject obj, jstring jfile, jint jbu, jint jbd) {
 
@@ -66,7 +67,9 @@ int start_record(JNIEnv* env, jobject obj, jstring jfile, jint jbu, jint jbd) {
   
 	log_info("start_record");
 
-	if(alive) return 1;	
+	if(alive) {
+		stop_record(env, obj, last_codec);	
+	}
 	if(!jfile) return 1;
 
 	if(stat(OUT_DIR,&st) < 0) {
@@ -87,8 +90,9 @@ int start_record(JNIEnv* env, jobject obj, jstring jfile, jint jbu, jint jbd) {
 	}
 	strcpy(cur_file,file);
         (*env)->ReleaseStringUTFChars(env,jfile,file);
-
+	pthread_mutex_lock(&mutty);
 	alive = 1;
+	pthread_mutex_unlock(&mutty);
 	boost_up = jbu;
 	boost_dn = jbd;
 
@@ -113,7 +117,7 @@ void stop_record(JNIEnv* env, jobject obj, jint codec) {
     pthread_t k;
 
 	log_info("stop_record");
-
+	last_codec = codec;
 	pthread_mutex_lock(&mutty);
 	alive = 0;	
 	if(codec >= 2) {
