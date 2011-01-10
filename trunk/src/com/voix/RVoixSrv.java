@@ -502,12 +502,13 @@ public class RVoixSrv extends Service {
 			
 	private void shutup() {
 		Timer t = new Timer();
+		if(aman == null) aman = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 		final int cur_mode = aman.getRingerMode();
 		aman.setRingerMode(AudioManager.RINGER_MODE_SILENT);
 		TimerTask task = new TimerTask() {
 			@Override
 			public void run() {
-				telephony.invoke("silenceRinger");
+			//	telephony.invoke("silenceRinger");
 				aman.setRingerMode(cur_mode);
 			}
 		};
@@ -1039,8 +1040,9 @@ public class RVoixSrv extends Service {
 		private boolean auto_answer(String aa_file, String rec_file) {
        	 	Log.dbg("auto_answer(" + aa_file + "," + rec_file + ")");
 			if(aa_file != null && (new File(aa_file)).exists()) {
-       	   		telephony.invoke("answerRingingCall");
-       	   		telephony.invoke("silenceRinger");
+       	   		shutup();
+				telephony.invoke("answerRingingCall");
+       	   		// telephony.invoke("silenceRinger");
        	   		answerCall(aa_file, rec_file, boost_dn);
        	   		Log.msg("number " + inc_number + ": call auto answered, rec_file=" + rec_file);
        	   		if(report != null) log.write(report + ", auto answered, rec_file=" + rec_file);
