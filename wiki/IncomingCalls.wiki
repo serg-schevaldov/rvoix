@@ -1,0 +1,55 @@
+=Processing of Incoming Calls=
+
+Basically, this program first filters all incoming calls using black/white lists, and then handles the remaining calls
+according to settings specified for different call types and for individual phone numbers.
+The processing of all (filtered or not) calls may also be overridden by auto-answer settings.
+
+The call types are:
+
+ * number in contacts;
+ * number not in contacts;
+ * unknown numbers.
+
+The default settings for each call type are:
+
+ * none (do not process at all);
+ * record the call;
+ * hang up;
+ * mute the ring (further recording is impossible if you put the phone off-hook);
+ * in-call manual control.
+
+The last option is experimental, and may be used to start/stop recording of multiple call fragments during the call.
+
+These settings are defined in main "Incoming calls" menu.
+
+As for the filtering, you may maintain multiple black and white lists, quickly reloading them using "Load" menu command.
+
+Only *one* list (either black or white) may be active at each specific time moment.
+This is defined by "Blacklists and exceptions -> B/W lists mode" setting (see Figure below).
+Switching to white lists may be useful, e.g., when you are busy and inclined to speak only to a limited number of your callers.
+
+The "Black lists and exceptions->Exceptions" list for individual numbers is ignored when a black or white list
+is active (i.e., the B/W lists mode is not "Off"): it is used to override further default processing of (known) numbers
+for the first two call types. 
+
+However, the "Autoanswer settings->Exceptions" list may be used to override the default
+auto-answer files for those lists.
+As shown in the following Figure, the auto-answer is _always immediate_ for black and white lists, moreover, in case of black lists,
+the callers' answers are never recorded.
+
+http://img3.imageshack.us/img3/8017/drawing01.png
+
+The next two Figures demonstrate how the auto-answering is implemented.
+
+a) _Black and white lists_
+
+http://img11.imageshack.us/img11/4721/drawing02.png
+
+b) _Regular calls_
+
+http://img35.imageshack.us/img35/7623/drawing03.png
+
+
+
+
+
