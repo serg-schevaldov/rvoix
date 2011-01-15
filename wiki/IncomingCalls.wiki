@@ -1,5 +1,8 @@
 =Processing of Incoming Calls=
 
+This page details the processing of incoming calls in rVoix.
+
+
 Basically, this program first filters all incoming calls using black/white lists, and then handles the remaining calls
 according to settings specified for different call types and for individual phone numbers.
 The processing of all (filtered or not) calls may also be overridden by auto-answer settings.
@@ -22,7 +25,7 @@ The last option is experimental, and may be used to start/stop recording of mult
 
 These settings are defined in main "Incoming calls" menu.
 
-As for the filtering, you may maintain multiple black and white lists, quickly reloading them using "Load" menu command.
+As for the filtering, you may maintain multiple black and white lists, quickly reloading them using "Load" command from menu.
 
 Only *one* list (either black or white) may be active at each specific time moment.
 This is defined by "Blacklists and exceptions -> B/W lists mode" setting (see Figure below).
@@ -48,6 +51,32 @@ http://img11.imageshack.us/img11/4721/drawing02.png
 b) _Regular calls_
 
 http://img35.imageshack.us/img35/7623/drawing03.png
+
+The delay in this Figure is defined by "Autoanswer delay" setting either for the respective incoming call type, or for individual numbers if the number is found in "Autoanswer settings->Exceptions".
+
+File and Delay settings for "Incoming calls->Blacklists and exceptions->Exceptions" are taken from "Autoanswer settings->Exceptions," but the auto-answer mode (i.e., "autoanswer" or "autoanswer+rec") of the former takes priority over the latter.
+For example, consider the following setup:
+
+ * "Numbers in contacts": "Ask on each call"
+ * "Blacklists and exceptions->Exceptions": "Autoanswer+record" exception type for a number +12345678 (which is in contacts) 
+ * "Autoanswer settings->Numbers in contacts": "Autoanswer" mode, files "contacts.wav" and "contacts_rec.wav" for "Autoanswer" and "Autoanswer+record" correspondingly, delay of 10 seconds 
+ * "Autoanswer settings->Exceptions": delay of 15 seconds, and file "12345678.wav" for a number +12345678 of type "Auto-answer" in Exceptions list.
+
+As the result, +12345678 will be auto-answered and recorded after 15 seconds (because it's in exception list) using "contacts_rec.wav" (because its type doesn't match that defined in "Autoanswer settings->Exceptions"). If you take the phone off-hook before this 15 second interval expires, auto-answer and further recording will be cancelled, you'll be asked if the call needs recording, and will be able to complete the call yourself.
+
+If +12345678 were not in "Blacklists and exceptions->Exceptions" list, it would be auto-answered (no recording) using "12345678.wav" after 15 seconds. If it were not in "Autoanswer settings->Exceptions" also, "contacts.wav" would be used after 10 seconds. 
+
+Note that if "Autoanswer" mode in "Autoanswer settings->Numbers ..." is "Off," no auto-answer is ever initiated unless the number is in "Blacklists and exceptions->Exceptions."
+
+*So, if you have a device that does not support auto-answering, make sure that the modes for all call types in "Autoanswer settings" are "Off," do not select auto-answering modes for white lists, and check that no number has "Autoanswer" or "Autoanswer+record" type in Blacklist or in Exceptions*.
+
+
+
+
+
+
+
+
 
 
 
