@@ -59,14 +59,32 @@ public class RVoixSrv extends Service {
 	public static final int INCOMING_ACT_IGN = 3;
 	public static final int INCOMING_ACT_ASK = 4;
 	public static final int INCOMING_ACT_ASK_INCALL = 5;
-	public static final int INCOMING_ACT_AUTOANSWER = 6;
-	public static final int INCOMING_ACT_AUTOANSWER_RECORD = 7;
+	//public static final int INCOMING_ACT_AUTOANSWER = 6;
+	//public static final int INCOMING_ACT_AUTOANSWER_RECORD = 7;
 	
 	private int unk_proc = INCOMING_ACT_REC;
 	private int cont_proc = INCOMING_ACT_REC;
 	private int ncont_proc = INCOMING_ACT_REC;
 	private int out_proc = OUTGOING_REC_ALL;
-
+	private int call_proc = INCOMING_ACT_NONE;
+	
+	public static final int AA_MODE_OFF = 0;
+	public static final int AA_MODE_AUTOANSWER = 1;
+	public static final int AA_MODE_AUTOANSWER_RECORD = 2;
+	
+	private int nc_aa_mode = AA_MODE_OFF;
+	private int cn_aa_mode = AA_MODE_OFF;
+	private int un_aa_mode = AA_MODE_OFF;
+	private int aa_mode = 	 AA_MODE_OFF;
+	
+	private int nc_aa_delay = 0;
+	private int cn_aa_delay = 0;
+	private int un_aa_delay = 0;
+	private int ex_aa_delay = 0;
+	private int aa_delay = 0;
+	
+	private Timer aatimer = null;
+	
 	// NB: These are also hard-coded in prefs.xml
 	public static final int BMODE_NONE = 0;
 	public static final int BMODE_BLIST = 1;
@@ -173,7 +191,7 @@ public class RVoixSrv extends Service {
 					INCOMING_NONUMBER, INCOMING_CONT, INCOMING_NCONT  }
 
 	private CType call_type = CType.UNKNOWN;
-	private int call_proc = INCOMING_ACT_NONE;
+
 	
 	// phone number, or contact name (if present)
 	private String out_number = null;
@@ -181,6 +199,11 @@ public class RVoixSrv extends Service {
 	
 	public static boolean recording  = false;
 	public static boolean encoding = false;
+	
+	public static boolean auto_answering = false;
+	public static boolean auto_answering_cancelled = false;
+	public static boolean auto_answer_recording = false;
+	private static boolean loud_aa_rec = false;
 	
 	// number of recording for *INCALL modes
 	private int chunk = 0;
@@ -199,6 +222,12 @@ public class RVoixSrv extends Service {
    		chunk = 0;
    		ask_in_progress = false;
    		ask_incall_started = false;
+   		aa_mode = AA_MODE_OFF;
+   		aatimer = null;
+   		aa_delay = 0;
+   		auto_answering = false;
+   		auto_answer_recording = false;
+   		auto_answering_cancelled = false;
 	}
 
 	public void startAskActivity(Context context, boolean out, boolean incall) {
@@ -217,17 +246,18 @@ public class RVoixSrv extends Service {
 	// Interaction with AskActivity: we call it
     private static final RemoteCallbackList<IRVoixCallback> cBacks = new RemoteCallbackList<IRVoixCallback>();
 
-    public enum CBack { ENC_CMPL, REC_CMPL, DONE, REC_START  }
+    public enum CBack { ENC_CMPL, REC_CMPL, DONE, REC_START, AA_REC_START  }
     
     private static void broadcastActivities(CBack cb) {
         final int k = cBacks.beginBroadcast();
-            Log.dbg("callAskActivity(): entry");
+            Log.dbg("broadcastActivities(): broadcasting " + cb);
         	for (int i=0; i < k; i++) {
             	try {
             		switch(cb) {
             			case ENC_CMPL:	cBacks.getBroadcastItem(i).encodingComplete(); break;
             			case REC_CMPL:	cBacks.getBroadcastItem(i).recordingComplete(); break;
             			case REC_START:	cBacks.getBroadcastItem(i).recordingStarted(); break;
+            			case AA_REC_START:	cBacks.getBroadcastItem(i).aarecordingStarted(); break;
             			case DONE:	cBacks.getBroadcastItem(i).goodbye(); break;	
             		}
             	} catch (RemoteException e) {
@@ -237,13 +267,12 @@ public class RVoixSrv extends Service {
             	}
             }
         	cBacks.finishBroadcast();
-        	Log.dbg("callAskActivity(): exit");
     }
 
     private static void broadcastAboutToRecord(boolean is_outgoing, boolean is_incall, String p) {
         	if(!need_broadcast_record) return;
     		final int k = cBacks.beginBroadcast();
-            Log.dbg("callAskActivity(): entry");
+            Log.dbg("broadcastAboutToRecord(): entry");
         	for (int i=0; i < k; i++) {
             	try {
             		cBacks.getBroadcastItem(i).recordingAboutToStart(is_outgoing, is_incall, p);
@@ -254,7 +283,7 @@ public class RVoixSrv extends Service {
             	}
             }
         	cBacks.finishBroadcast();
-        	Log.dbg("callAskActivity(): exit");
+        	Log.dbg("broadcastAboutToRecord(): exit");
     }
     
 	// Interaction with AskActivity: it calls us
@@ -333,6 +362,9 @@ public class RVoixSrv extends Service {
 	    	Log.msg("wait_confirm: " + confirm);
 	    	wait_confirm_result = confirm;
 	    }
+	    public void cancel_autoanswer() {
+	    	onAACancel();
+	    }
 	    public void registerCallback(IRVoixCallback cb)   { if(cb != null) cBacks.register(cb); }
         public void unregisterCallback(IRVoixCallback cb) { if(cb != null) cBacks.unregister(cb); }
 	};
@@ -344,17 +376,29 @@ public class RVoixSrv extends Service {
 	public static void onRecordingComplete() {
 		Log.dbg("onRecordingComplete()");
 		if(log != null) log.write("Recording complete");
-		if(wakeLock.isHeld()) wakeLock.release();
 		broadcastActivities(CBack.REC_CMPL);	// re-route to our activity
 		recording = false;
 	}
 
+	public static void onAutoanswerRecordingStarted() {
+		Log.dbg("onAutoanswerRecordingStarted()");
+		broadcastActivities(CBack.AA_REC_START);		
+		auto_answer_recording = true;
+		// this just doesn't work
+		if(aman != null) {
+   	 		if(loud_aa_rec) aman.setSpeakerphoneOn(true);
+  	 		//else aman.setSpeakerphoneOn(false);
+   	 		// aman.setMicrophoneMute(true);  
+   	 	} 	
+	}
+	
 	public static void onEncodingComplete() {
 		Log.dbg("onEncodingComplete()");
 		if(log != null) log.write("Encoding complete");
 		if(wakeLock.isHeld()) wakeLock.release();
 		broadcastActivities(CBack.ENC_CMPL);	// re-route to our activity
 		encoding = false;
+		if(auto_answering) return;
 		if(ziz != null) cleanUp(ziz);
 		java.lang.System.gc();
 		if(is_tattoo && !ask_incall_started) {
@@ -371,7 +415,6 @@ public class RVoixSrv extends Service {
 	
 	// NB: chunk # is updated in stop_rec()
 	private String makeFilename() {
-		Log.dbg("makeFilename(): entry");
 		String file = DateFormat.format("MM-dd-kkmm", new Date()).toString();
    		if(call_type == CType.OUTGOING_CONT || call_type == CType.OUTGOING_NCONT) {
    			if(out_number != null) {
@@ -382,7 +425,7 @@ public class RVoixSrv extends Service {
    		} else if(inc_number != null){
    			String s = new String(inc_number);
 			if(s.contains("*")) s = inc_number.replace('*', '#'); 
-   			String prefix = (call_proc == INCOMING_ACT_AUTOANSWER_RECORD) ? "A-" : "I-"; 
+   			String prefix = (aa_mode == AA_MODE_AUTOANSWER_RECORD) ? "A-" : "I-"; 
 			file = prefix + file + (s.charAt(0) == '+' ? "" : "-") + s;
    		}
 		if(ask_incall_started) file = file + "-" + chunk;
@@ -396,7 +439,6 @@ public class RVoixSrv extends Service {
 				}
 			}
 		}
-		Log.dbg("makeFilename(): exit");
 		return file;
 	}
 	
@@ -515,6 +557,9 @@ public class RVoixSrv extends Service {
 		t.schedule(task, 1000);
 		telephony.invoke("silenceRinger");
 	}
+
+	// for auto-answering synchronization 
+	public static final Object aa_sync = new Object();
 	
 	/////////////////////////////////////////////////////
 	//////// Receiver of phone state changes
@@ -522,7 +567,6 @@ public class RVoixSrv extends Service {
 	private class CallReceiver extends BroadcastReceiver {
 		
 		private String lastFile = null;
-		
 		// Auto-answer sound files [auto-answer mode]
 		private String cn_file_a = null;	//	for contacts
 		private String un_file_a = null;	//	for unknown numbers
@@ -670,17 +714,17 @@ public class RVoixSrv extends Service {
    	                	   			String reply_file = find_reply_file(s, false);
             	   					if(reply_file != null) {
             	   						if(report != null) log.write(report +", found A/A exception file");
-            	   						auto_answer(reply_file,null);
+            	   						if(auto_answer(reply_file,null,0)) aa_mode = AA_MODE_AUTOANSWER;
             	   						return;
             	   					}
    	                	   			if(ba_file_a == null) {
    	                	   				SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
    	                	   				ba_file_a = sts.getString("ba_file_a", null);
    	                	   			}
-   	                	   			if(!auto_answer(ba_file_a,null)) {
+   	                	   			if(!auto_answer(ba_file_a,null,0)) {
    	            	   					shutup();
    	            	   					telephony.invoke("endCall");
-   	                	   			}
+   	                	   			} else aa_mode = AA_MODE_AUTOANSWER;
             	   					return;
             	   				}
             	   				Log.msg(s + " not blacklisted, continue");
@@ -721,6 +765,7 @@ public class RVoixSrv extends Service {
             	   			if(s == null || !wlist.contains(s)) {
             	   				String outfile = null;
             	   				String reply_file = find_reply_file(s, bmode == BMODE_WLIST_AR);
+            	   				aa_mode = (bmode == BMODE_WLIST_AR) ? AA_MODE_AUTOANSWER_RECORD : AA_MODE_AUTOANSWER;
             	   				if(reply_file == null) {
             	   					if(bmode == BMODE_WLIST_AA) {
             	   						if(wa_file_a == null) {
@@ -735,14 +780,15 @@ public class RVoixSrv extends Service {
             	   						}
             	   						if(wa_file_r != null) {
             	   							reply_file = wa_file_r;
-                        	   				call_proc = INCOMING_ACT_AUTOANSWER_RECORD;
                         	   				outfile = makeFilename();
             	   						}
+            	   				   	 	if(aman == null) aman = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
             	   					}
             	   				} else if(report != null) log.write(report +", found A/A exception file");
-            	   				if(!auto_answer(reply_file,outfile)) {
+            	   				if(!auto_answer(reply_file,outfile,0)) {
    	            	   				shutup();
    	            	   				telephony.invoke("endCall");
+   	            	   				aa_mode = AA_MODE_OFF;
    	                	   		}
             	   				return;	
             	   			}
@@ -750,25 +796,28 @@ public class RVoixSrv extends Service {
             	   		default: 
             	   			Log.dbg("no b/w lists active");
             	   			break;
-           	   	}
+           	   		}
             	    //////////////////////  black and white lists processed //////////////////////////////
                  	    
             	    //////////////////////  Set the default action and process /////////////////////////// 
             	    //////////////////////  overrides from exception lists ///////////////////////////////
             	    if(s != null) {
             	   		String name = ctx.findInContacts(s);
-
             	   		if(name != null) {
             	   			call_type = CType.INCOMING_CONT;
-            	   			call_proc = cont_proc;
             	   			inc_number = new String(name);
             	   			if(report != null) report += (" [" + inc_number +"]" );
+            	   			aa_mode = cn_aa_mode;
+    	   					aa_delay = cn_aa_delay;
+    	   					call_proc = cont_proc;
             	   		} else {
             	   			call_type = CType.INCOMING_NCONT;
-            	   			call_proc = ncont_proc;
             	   			inc_number = new String(s);
+            	   			aa_mode = nc_aa_mode;
+    	   					aa_delay = nc_aa_delay;
+    	   					call_proc = ncont_proc;
             	   		}
-            	   		Log.dbg("default call_proc = " + call_proc );
+            	   		Log.dbg("default call_proc = " + call_proc + ", aa_mode = " + aa_mode);
 
             	   		if(irlist == null) irlist = get_array(FContentList.IEMODE,FContentList.TYPE_R);
             	   		if(ialist == null) ialist = get_array(FContentList.IEMODE,FContentList.TYPE_A);
@@ -794,25 +843,109 @@ public class RVoixSrv extends Service {
             	   			Log.dbg("phone found in always ask in-call list");
             	   			if(report != null) report += " [in always incall list]";
             	   		} else if(iqlist.contains(s)) {
-            	   			call_proc = INCOMING_ACT_AUTOANSWER;
+            	   			aa_mode = AA_MODE_AUTOANSWER;
+            	   			aa_delay = ex_aa_delay;
             	   			Log.dbg("phone found in always autoanswer list");
             	   			if(report != null) report += " [in always a/a list]";
             	   		} else if(ixlist.contains(s)) {
-            	   			call_proc = INCOMING_ACT_AUTOANSWER_RECORD; 
+            	   			aa_mode = AA_MODE_AUTOANSWER_RECORD;
+            	   			aa_delay = ex_aa_delay;
+            	   			if(aman == null) aman = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
             	   			Log.dbg("phone found in always autoanswer+record list");
             	   			if(report != null) report += " [in always a/r list]";
             	   		}
-            	   		Log.dbg("effective call_proc after lists = " + call_proc );
+            	   		Log.dbg("effective call_proc after lists = " + call_proc  + ", aa_mode = " + aa_mode );
             	   	} else {
             	   		inc_number = "unknown";
             	   		call_type = CType.INCOMING_NONUMBER;
-            	   		call_proc = unk_proc;
+        	   			aa_mode = un_aa_mode;
+	   					aa_delay = un_aa_delay;
+	   					call_proc = unk_proc;
             	   		Log.dbg("default call_proc = " + call_proc );
             	   	}
             	    ////////////////////// action determined for all call types. ///////////////////////
             	    ////////// Perform specific tasks to be done before the phone is off-hook //////////
-        	   		Log.msg("CallReceiver: new incoming call " + inc_number);
-	   				switch(call_proc) {
+
+            	    Log.msg("CallReceiver: new incoming call " + inc_number);
+	   				
+            	    //////////////////// Process auto answer modes first.
+        	   		if(aa_mode != AA_MODE_OFF) {
+						String aa_file = null;
+   	                	String rec_file = null;
+   						boolean need_rec = (aa_mode == AA_MODE_AUTOANSWER_RECORD);
+   	                	switch(call_type) {
+   	                		case INCOMING_NONUMBER:
+   	                			if(need_rec) {
+   	                				if(un_file_r == null) {
+   	                					SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+   	                					un_file_r = sts.getString("un_file_r", null);
+   	                				}
+   	                	   			aa_file = un_file_r;
+   	                	   		} else {
+   	                	   			if(un_file_a == null) {
+   	                	   				SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+   	                	   				un_file_a = sts.getString("un_file_a", null);
+   	                	   			}
+   	                	   			aa_file = un_file_a;
+   	                	   		}
+   	                	   		Log.dbg("INCOMING_NONUMBER need_rec: " + need_rec + ", aa_file="+ aa_file);
+   	                	   		break;
+   	                	   	case INCOMING_CONT:
+   	                	   		aa_file = find_reply_file(s, need_rec);
+   	                	   		if(aa_file == null) {
+   	                	   			if(need_rec) {
+   	                	   				if(cn_file_r == null) {
+   	                	   					SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+   	                	   					cn_file_r = sts.getString("cn_file_r", null);
+   	                	   				}
+	                	   				aa_file = cn_file_r;
+   	                	   			} else {
+   	                	   				if(cn_file_a == null) {
+   	                	   					SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+   	                	   					cn_file_a = sts.getString("cn_file_a", null);
+   	                	   				}
+   	                	   				aa_file = cn_file_a;
+   	                	   			}
+   	                	   		} else {
+   	                	   			if(report != null) log.write(report +", found A/A exception file");	
+   	                	   			aa_delay = ex_aa_delay;
+   	                	   		}
+           	   					Log.dbg("INCOMING_CONT need_rec: " + need_rec + ", aa_file="+ aa_file);
+   	                	   		break;
+   	                	   	case INCOMING_NCONT:
+   	                	   		aa_file = find_reply_file(s, need_rec);
+   	                	   		if(aa_file == null) {
+	                	   			if(need_rec) {
+	                	   				if(nc_file_r == null) {
+	                	   					SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+	                	   					nc_file_r = sts.getString("nc_file_r", null);
+	                	   				}
+	              	   					aa_file = nc_file_r;
+	                	   			} else {
+	                	   				if(nc_file_a == null) {
+	                	   					SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+	                	   					nc_file_a = sts.getString("nc_file_a", null);
+	                	   				}
+                	   					aa_file = nc_file_a;
+	                	   			}
+	                	   		} else {
+	                	   			if(report != null) log.write(report +", found A/A exception file");
+	                	   			aa_delay = ex_aa_delay;
+	                	   		}
+   	                	   		Log.dbg("INCOMING_NCONT need_rec: " + need_rec + ", aa_file="+ aa_file);
+   	                	   		break;
+   	                	   	default: break;	
+   	                	}
+   	                	if(need_rec) {
+   	                		rec_file = makeFilename();
+   	                		if(aman == null) aman = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+   	                	}
+   	                	if(auto_answer(aa_file, rec_file, aa_delay)) return;
+   	                	Log.dbg("failed to answer, setting aa_mode=AA_MODE_OFF");
+   	                	aa_mode = AA_MODE_OFF;
+        	   		}
+        	   		
+        	   		switch(call_proc) {
    						case INCOMING_ACT_HUP:
    							telephony.invoke("silenceRinger");
    							telephony.invoke("endCall"); 
@@ -836,79 +969,24 @@ public class RVoixSrv extends Service {
    							ask_in_progress = true;
    							if(report != null) log.write(report + ", query user");
    							break;
-   						case INCOMING_ACT_AUTOANSWER:
-   						case INCOMING_ACT_AUTOANSWER_RECORD:
-   							String aa_file = null;
-   	                	   	String rec_file = null;
-   							boolean need_rec = (call_proc == INCOMING_ACT_AUTOANSWER_RECORD);
-   	                	   	switch(call_type) {
-   	                	   		case INCOMING_NONUMBER:
-   	                	   			if(need_rec) {
-   	                	   				if(un_file_r == null) {
-   	                	   					SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-   	                	   					un_file_r = sts.getString("un_file_r", null);
-   	                	   				}
-   	                	   				aa_file = un_file_r;
-   	                	   			} else {
-   	                	   				if(un_file_a == null) {
-   	                	   					SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-   	                	   					un_file_a = sts.getString("un_file_a", null);
-   	                	   				}
-   	                	   				aa_file = un_file_a;
-   	                	   			}
-   	                	   			Log.dbg("INCOMING_NONUMBER need_rec: " + need_rec + ", aa_file="+ aa_file);
-   	                	   			break;
-   	                	   		case INCOMING_CONT:
-   	                	   			aa_file = find_reply_file(s, need_rec);
-   	                	   			if(aa_file == null) {
-   	                	   				if(need_rec) {
-   	                	   					if(cn_file_r == null) {
-   	                	   						SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-   	                	   						cn_file_r = sts.getString("cn_file_r", null);
-   	                	   					}
-	                	   					aa_file = cn_file_r;
-   	                	   				} else {
-   	                	   					if(cn_file_a == null) {
-   	                	   						SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-   	                	   						cn_file_a = sts.getString("cn_file_a", null);
-   	                	   					}
-   	                	   					aa_file = cn_file_a;
-   	                	   				}
-   	                	   			} else if(report != null) log.write(report +", found A/A exception file");	
-           	   						Log.dbg("INCOMING_CONT need_rec: " + need_rec + ", aa_file="+ aa_file);
-   	                	   			break;
-   	                	   		case INCOMING_NCONT:
-   	                	   			aa_file = find_reply_file(s, need_rec);
-   	                	   			if(aa_file == null) {
-	                	   				if(need_rec) {
-	                	   					if(nc_file_r == null) {
-	                	   						SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-	                	   						nc_file_r = sts.getString("nc_file_r", null);
-	                	   					}
-	              	   						aa_file = nc_file_r;
-	                	   				} else {
-	                	   					if(nc_file_a == null) {
-	                	   						SharedPreferences sts = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-	                	   						nc_file_a = sts.getString("nc_file_a", null);
-	                	   					}
-                	   						aa_file = nc_file_a;
-	                	   				}
-	                	   			} else if(report != null) log.write(report +", found A/A exception file");
-   	                	   			Log.dbg("INCOMING_NCONT need_rec: " + need_rec + ", aa_file="+ aa_file);
-   	                	   			break;
-   	                	   		default: break;	
-   	                	   	}
-   	                	   	if(call_proc == INCOMING_ACT_AUTOANSWER_RECORD) rec_file = makeFilename();
-   	                	   	auto_answer(aa_file, rec_file);
-   	                		break;
-   	                	default:
-   	                		break;
+   						default:
+   							break;
 	   				}
 
                } else if(s.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
 
-            	   	if((call_proc == INCOMING_ACT_AUTOANSWER || call_proc == INCOMING_ACT_AUTOANSWER_RECORD) 
-            	   			&& out_number == null) return;
+            	   	synchronized(aa_sync) {
+            	   		if(auto_answering) {
+            	   			Log.dbg("offhook while autoanswering, returning");
+            	   			return;
+            	   		}
+            	   		if(aatimer != null) {
+            	   			aatimer.cancel();
+            	   			aatimer = null;
+            	   		}
+            	   		auto_answering_cancelled = true;
+            	   		aa_mode = AA_MODE_OFF;
+            	   	}
             	   	start_time = 0;
         	   		
             	   	switch(call_type) {
@@ -941,13 +1019,18 @@ public class RVoixSrv extends Service {
         	   				if(call_proc == INCOMING_ACT_REC) {
         	   					broadcastAboutToRecord(false, false, inc_number);
         	   					break; // record
-        	   				}
-        	   				else if(call_proc == INCOMING_ACT_ASK_INCALL) {
+        	   				} else if(call_proc == INCOMING_ACT_ASK_INCALL) {
         	   					startAskActivity(context, false, true);
         	   					broadcastAboutToRecord(false, true, inc_number);
         	   					ask_incall_started = true;
         	   					if(report != null) log.write(report + ", query user");
         	   					return;
+        	   				} else if(call_proc == INCOMING_ACT_ASK) {
+       							broadcastAboutToRecord(false, false, inc_number);
+       							startAskActivity(context, false, false);
+       							ask_in_progress = true;
+       							if(report != null) log.write(report + ", query user");
+       							return;
         	   				}
         	   				Log.msg("number " + inc_number + ": skipped");
         	   				set_defaults();
@@ -974,14 +1057,13 @@ public class RVoixSrv extends Service {
        	    		// set_defaults();
        	    		
                } else if(s.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
-            	   	
-            	   	if(call_proc == INCOMING_ACT_AUTOANSWER_RECORD && out_number == null) {
+
+            	   	if(aa_mode == AA_MODE_AUTOANSWER_RECORD) {
             	   		stopRecord(srv_mode | 2);	// built-in in the library
+            	   		broadcastActivities(CBack.DONE);
             	   		set_defaults();
-            	   		return;
+                	   	return;
             	   	}
-            	   	if(call_proc == INCOMING_ACT_AUTOANSWER && out_number == null) return;
-            	   	
             	   	if(ask_incall_started || ask_in_progress) {
        	    			Log.msg("stopping AskActivity");
        	    			broadcastActivities(CBack.DONE);
@@ -1035,22 +1117,108 @@ public class RVoixSrv extends Service {
         	    }	
         	}
 		}
+
+		class AATask extends TimerTask {
+			String aafile;
+			String rrfile;
+			AATask(String aa_file, String rec_file) {
+				aafile = new String(aa_file);
+				if(rec_file != null) rrfile = new String(rec_file);
+				else rrfile = null; 
+			}
+			@Override
+			public void run() {
+				Log.msg("delay expired, auto answering");
+				synchronized(aa_sync) {
+					if(!auto_answering_cancelled) {
+						telephony.invoke("answerRingingCall");
+						auto_answering = true;
+						answerCall(aafile, rrfile, boost_dn);
+						(new Timer()).schedule(new TimerTask() {
+							@Override
+							public void run() {	
+								startAACancelActivity();
+							}
+						}, 2000);
+					}
+				}
+				Log.msg("number " + inc_number + ": call auto answered, rec_file=" + rrfile);
+       	   		if(report != null) log.write(report + ", auto answered, rec_file=" + rrfile);
+			}
+		}
 		
-		
-		private boolean auto_answer(String aa_file, String rec_file) {
+		private boolean auto_answer(String aa_file, String rec_file, int delay) {
        	 	Log.dbg("auto_answer(" + aa_file + "," + rec_file + ")");
-			if(aa_file != null && (new File(aa_file)).exists()) {
-       	   		shutup();
-				telephony.invoke("answerRingingCall");
+       	 	if(aa_file != null && (new File(aa_file)).exists()) {
+       	   		if(delay != 0) {
+       	   			aatimer = new Timer();
+       	   			aatimer.schedule(new AATask(aa_file,rec_file), delay*1000);
+       	   			Log.dbg("setting " + delay + " sec delay");
+       	   			return true;
+       	   		}
+				shutup();
        	   		// telephony.invoke("silenceRinger");
-       	   		answerCall(aa_file, rec_file, boost_dn);
-       	   		Log.msg("number " + inc_number + ": call auto answered, rec_file=" + rec_file);
+				synchronized(aa_sync) {
+					if(!auto_answering_cancelled) {
+						telephony.invoke("answerRingingCall");
+						auto_answering = true;
+						answerCall(aa_file, rec_file, boost_dn);
+						startAACancelActivity();
+					}	
+				}
+				Log.msg("number " + inc_number + ": call auto answered, rec_file=" + rec_file);
        	   		if(report != null) log.write(report + ", auto answered, rec_file=" + rec_file);
        	   		return true;
        	   	} 
        	   	Log.msg("number " + inc_number + ": auto answer skipped: no playback file");
        	   	if(report != null) log.write(report + ", auto answer skipped: no playback file");
       		return false;	
+		}
+	}
+	
+	void startAACancelActivity() {
+		Intent intie = new Intent();
+ 	   	intie.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+ 	   	intie.setClassName("com.voix", "com.voix.AskAACancel");
+ 	   	intie.putExtra("phone", inc_number);
+        Log.dbg("starting AskAACancel activity");
+ 	   	startActivity(intie);
+ 	   	ask_in_progress = true;
+	}
+	
+	void onAACancel() {
+		Log.dbg("onAACancel(): entry");
+		synchronized(aa_sync) {
+			if(auto_answering_cancelled) return;
+			stopRecord(srv_mode | 2);
+			aa_mode = AA_MODE_OFF;
+			ask_in_progress = false;
+		}
+		if(call_proc == INCOMING_ACT_REC) {
+			broadcastAboutToRecord(false, false, inc_number);
+	   		cr.lastFile = makeFilename();
+	   		if(startRecord(cr.lastFile, boost_up, boost_dn) != 0) {
+	   			Log.err("onAACancel(): startRecord failed");
+	   			set_defaults();
+	   			if(report != null) log.write(report + ", failed to start recording!");
+	   		} else {
+	   			recording = true;
+	   			Log.dbg("onAACancel(): started recording to " + cr.lastFile);
+	   			if(!wakeLock.isHeld()) wakeLock.acquire();
+	   			broadcastActivities(CBack.REC_START);
+	   			if(report != null) log.write(report + ", started recording to " + cr.lastFile);
+	   		}
+		} else if(call_proc == INCOMING_ACT_ASK_INCALL) {
+			startAskActivity(this, false, true);
+			broadcastAboutToRecord(false, true, inc_number);
+			ask_incall_started = true;
+			if(report != null) log.write(report + ", query user");
+		} else if(call_proc == INCOMING_ACT_ASK) {
+			Log.dbg("onAACancel(): asking if recording is needed");
+			broadcastAboutToRecord(false, false, inc_number);
+			startAskActivity(this, false, false);
+			ask_in_progress = true;
+			if(report != null) log.write(report + ", query user");
 		}
 	}
 	
@@ -1132,13 +1300,12 @@ public class RVoixSrv extends Service {
 	private void getPrefs(){
 		
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-		
 		foreground = settings.getBoolean("foreground", true);
 		disable_notifications = settings.getBoolean("disable_notify", false);
 		logging = settings.getBoolean("logging", false);
 		is_tattoo = settings.getBoolean("is_tattoo", false);
 		min_out_confirm = settings.getBoolean("min_out_confirm", true);
-		
+		loud_aa_rec = settings.getBoolean("loud_aa_rec", false);
 		try {
 			srv_mode = Integer.parseInt(settings.getString("format", "0"));
 			boost_up = Integer.parseInt(settings.getString("boost_up", "0"));
@@ -1150,6 +1317,13 @@ public class RVoixSrv extends Service {
 			min_out_time = Integer.parseInt(settings.getString("min_out_time", "0"));
 			min_out_time *= 1000; // seconds -> milliseconds
 			bmode = Integer.parseInt(settings.getString("bmode", "0"));
+			nc_aa_mode = Integer.parseInt(settings.getString("nc_aa_mode", "0"));
+			cn_aa_mode = Integer.parseInt(settings.getString("cn_aa_mode", "0"));
+			un_aa_mode = Integer.parseInt(settings.getString("un_aa_mode", "0"));
+			nc_aa_delay = Integer.parseInt(settings.getString("nc_aa_delay", "0"));
+			cn_aa_delay = Integer.parseInt(settings.getString("cn_aa_delay", "0"));
+			un_aa_delay = Integer.parseInt(settings.getString("un_aa_delay", "0"));
+			ex_aa_delay = Integer.parseInt(settings.getString("ex_aa_delay", "0"));
 		} catch (Exception e) {
 			Log.err("Error parsing preference values");
 			e.printStackTrace();

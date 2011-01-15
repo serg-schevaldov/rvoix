@@ -3,7 +3,7 @@
     
 <string name="app_name">rVoix</string>
 
-<string name="SBuild">rVoix: Версия 1.06 Сборка 58</string>
+<string name="SBuild">rVoix: Версия 1.06 Сборка 91</string>
 
 <string name="RRMode">Запустить сервис</string>
 <string name="Settings">Настройки</string>
@@ -239,7 +239,7 @@
 
 <string name="SAA">Автоответ</string>
 <string name="SAAR">Автоответ+запись</string>
-<string name="SAAF">Файлы автоответа</string>
+<string name="SAAF">Установки автоответчика</string>
 
 <string name="SABlist">Номера из черного списка</string>
 <string name="SAWlist">Номера не из белого списка</string>
@@ -249,8 +249,8 @@
 <string name="SAANoFile">Файл не задан</string>
 <string name="SAASndFile">Выбор аудиофайла</string>
 
-<string name="SFDefaults">Файлы по умолчанию [автоответ]</string>
-<string name="SFDefaultsAR">Файлы по умолчанию [автоответ+запись]</string>
+<string name="SFDefaultAA">Файл автоответа</string>
+<string name="SFDefaultAR">Файл автоответа с записью</string>
 
 <string name="SCantCreateSndDir">Ошибка создания "/sdcard/voix/sounds"</string>
 <string name="StartRecord">Начать запись</string>
@@ -268,7 +268,31 @@
 
 <string name="SChFile">Изменить файл</string>
 <string name="SChFileAndType">Изменить файл и тип</string>
-<string name="SExFileList">Файлы для конкретных номеров</string>
+<string name="SExFileList">Отдельные номера</string>
 <string name="SExList">Список исключений</string>
+
+<string-array name="AAModes">
+<item>Отключено</item>
+<item>Автоответ</item>
+<item>Автоответ+запись</item>
+</string-array>
+
+<string-array name="AAModeValues">
+<item>0</item>
+<item>1</item>
+<item>2</item>
+</string-array>
+
+<string name="AADelay">Задержка автоответа</string>
+
+<string name="AAMode">Режим автоответа</string>
+
+<string name="AATimeMsg">Введите задержку в секундах</string>
+
+<string name="LoudAARec">Громкая запись автоответа</string>
+
+<string name="NowAnswering">Отвечаю</string>
+<string name="NowRecording">Записываю</string>
+
 </resources>
 

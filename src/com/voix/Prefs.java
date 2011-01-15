@@ -56,19 +56,33 @@ public class Prefs extends PreferenceActivity
 		String []ia = getResources().getStringArray(R.array.InCallActions);
 		for(String s : z) {
 			m = (ListPreference) screen.findPreference(s);
-			m.setSummary(ia[str2int(settings.getString(s, "0"))]);
+			int i = str2int(settings.getString(s, "0"));
+			if(i > 5) {	// backward compatibility
+				i = 0;
+				SharedPreferences.Editor e = settings.edit();
+				e.putString(s, "0");
+			}
+			m.setSummary(ia[i]);
+		}
+
+		String []z1 = {"cn_aa_mode", "nc_aa_mode", "un_aa_mode"};
+		String []ia1 = getResources().getStringArray(R.array.AAModes);
+		for(String s : z1) {
+			m = (ListPreference) screen.findPreference(s);
+			int i = str2int(settings.getString(s, "0"));
+			m.setSummary(ia1[i]);
 		}
 		
-		String []q = {"boost_up", "boost_dn"};
+		String []q = {"boost_up", "boost_dn" };
 		for(String s : q) {
 			m = (ListPreference) screen.findPreference(s);
 			m.setSummary(getString(R.string.SCurVal) + " " + settings.getString(s, "0"));
 		}
 			
-		String []y = {"max_files", "max_storage", "max_time", "min_out_time"};
+		String []y = {"max_files", "max_storage", "max_time", "min_out_time", "nc_aa_delay", "cn_aa_delay", "un_aa_delay", "ex_aa_delay"};
 		for(String s : y) {
 			EditTextPreference e = (EditTextPreference) screen.findPreference(s);
-			e.setSummary(getString(R.string.SCurVal) + " " + settings.getString(s, "")); 
+			e.setSummary(getString(R.string.SCurVal) + " " + settings.getString(s, "0")); 
 		}
 
 		String []iw = getResources().getStringArray(R.array.BlistActions);

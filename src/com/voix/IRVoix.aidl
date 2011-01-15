@@ -9,6 +9,7 @@ interface IRVoix {
 	boolean start_rec();
 	boolean stop_rec();
 	void wait_confirm(int r);
+	void cancel_autoanswer();
 	void registerCallback(IRVoixCallback c);
     void unregisterCallback(IRVoixCallback c);
 }
