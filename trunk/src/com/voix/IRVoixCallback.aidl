@@ -7,6 +7,7 @@ oneway interface IRVoixCallback {
 	void encodingComplete();
 	void recordingAboutToStart(boolean outgoing, boolean incall, String phone);
 	void recordingStarted();
+	void aarecordingStarted();
 }
 
 

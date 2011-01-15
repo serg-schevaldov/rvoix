@@ -39,13 +39,6 @@
  
  <PreferenceCategory
     android:title="@string/SInCalls">
-	  <ListPreference
-		android:key="unknown_numbers"
-		android:defaultValue="1"
-		android:title="@string/SUnknownNum"
-		android:entries="@array/InCallActions"
-	    android:entryValues="@array/InCallValues"
-	    android:dialogTitle="@string/UnknownNum" />
   	<ListPreference
 		android:key="numbers_in_contacts"
 		android:defaultValue="1"
@@ -60,6 +53,13 @@
 		android:entries="@array/InCallActions"
 	    android:entryValues="@array/InCallValues"
 	    android:dialogTitle="@string/NonContNum" />
+	<ListPreference
+		android:key="unknown_numbers"
+		android:defaultValue="1"
+		android:title="@string/SUnknownNum"
+		android:entries="@array/InCallActions"
+	    android:entryValues="@array/InCallValues"
+	    android:dialogTitle="@string/UnknownNum" />
 	
 	<PreferenceScreen
     	android:key="overrides_screen"
@@ -88,47 +88,112 @@
   	  <Preference
 			android:key="new_rec"
 			android:title="@string/SAANew"/>
+	  <CheckBoxPreference
+		android:key="loud_aa_rec"
+	    android:title="@string/LoudAARec" 
+	    android:defaultValue="false"/>
 	  <PreferenceCategory
-    	android:title="@string/SFDefaults">
-  		<Preference
-			android:key="cn_file_a"
-			android:title="@string/SContNum"/>
-  		<Preference
-			android:key="nc_file_a"
-			android:title="@string/SNonContNum"/>
-  		<Preference
-			android:key="un_file_a"
-			android:title="@string/SUnknownNum"/>
+    	android:title="@string/SABlist">
   		<Preference
 			android:key="ba_file_a"
-			android:title="@string/SABlist"/>
-  		<Preference
-			android:key="wa_file_a"
-			android:title="@string/SAWlist"/>
-  	  </PreferenceCategory>
-  	  
-  	  <PreferenceCategory
-    	android:title="@string/SFDefaultsAR">
-  		<Preference
-			android:key="cn_file_r"
-			android:title="@string/SContNum"/>
-  		<Preference
-			android:key="nc_file_r"
-			android:title="@string/SNonContNum"/>
-  		<Preference
-			android:key="un_file_r"
-			android:title="@string/SUnknownNum"/>
-  		<Preference
-			android:key="wa_file_r"
-			android:title="@string/SAWlist"/>
+			android:title="@string/SFDefaultAA"/>
   	  </PreferenceCategory>
 
+	  <PreferenceCategory
+    	android:title="@string/SAWlist">
+  		<Preference
+			android:key="wa_file_a"
+			android:title="@string/SFDefaultAA"/>
+  		<Preference
+			android:key="wa_file_r"
+			android:title="@string/SFDefaultAR"/>
+  	  </PreferenceCategory>
+
+	  <PreferenceCategory
+    	android:title="@string/SContNum">
+	  	<ListPreference
+		android:key="cn_aa_mode"
+		android:defaultValue="0"
+		android:title="@string/AAMode"
+		android:entries="@array/AAModes"
+	    android:entryValues="@array/AAModeValues"
+	    android:dialogTitle="@string/ContNum" />
+  		<EditTextPreference
+		android:key="cn_aa_delay"
+		android:defaultValue="0"
+		android:dialogMessage="@string/AATimeMsg"
+		android:numeric="integer" 
+		android:maxLength="3"
+		android:title="@string/AADelay" />
+  		<Preference
+			android:key="cn_file_a"
+			android:title="@string/SFDefaultAA"/>
+  		<Preference
+			android:key="cn_file_r"
+			android:title="@string/SFDefaultAR"/>
+  	  </PreferenceCategory>
+
+	  <PreferenceCategory
+    	android:title="@string/SNonContNum">
+  		<ListPreference
+		android:key="nc_aa_mode"
+		android:defaultValue="0"
+		android:title="@string/AAMode"
+		android:entries="@array/AAModes"
+	    android:entryValues="@array/AAModeValues"
+	    android:dialogTitle="@string/ContNum" />
+  		<EditTextPreference
+		android:key="nc_aa_delay"
+		android:defaultValue="0"
+		android:dialogMessage="@string/AATimeMsg"
+		android:numeric="integer" 
+		android:maxLength="3"
+		android:title="@string/AADelay" />
+  		<Preference
+			android:key="nc_file_a"
+			android:title="@string/SFDefaultAA"/>
+  		<Preference
+			android:key="nc_file_r"
+			android:title="@string/SFDefaultAR"/>
+  	  </PreferenceCategory>
+
+	  <PreferenceCategory
+    	android:title="@string/SUnknownNum">
+		<ListPreference
+		android:key="un_aa_mode"
+		android:defaultValue="0"
+		android:title="@string/AAMode"
+		android:entries="@array/AAModes"
+	    android:entryValues="@array/AAModeValues"
+	    android:dialogTitle="@string/ContNum" />
+  		<EditTextPreference
+		android:key="un_aa_delay"
+		android:defaultValue="0"
+		android:dialogMessage="@string/AATimeMsg"
+		android:numeric="integer" 
+		android:maxLength="3"
+		android:title="@string/AADelay" />
+  		<Preference
+			android:key="un_file_a"
+			android:title="@string/SFDefaultAA"/>
+  		<Preference
+			android:key="un_file_r"
+			android:title="@string/SFDefaultAR"/>
+  	  </PreferenceCategory>
   	  <PreferenceCategory
     	android:title="@string/SExFileList">
 		<Preference
 			android:key="edit_aelist"
-			android:title="@string/SExList"/>
+			android:title="@string/SBExceptions"/>
+  	    <EditTextPreference
+		android:key="ex_aa_delay"
+		android:defaultValue="0"
+		android:dialogMessage="@string/AATimeMsg"
+		android:numeric="integer" 
+		android:maxLength="3"
+		android:title="@string/AADelay" />
   	  </PreferenceCategory>	
+  	
   	</PreferenceScreen>
 
   </PreferenceCategory>

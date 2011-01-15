@@ -3,7 +3,7 @@
     
 <string name="app_name">rVoix</string>
 
-<string name="SBuild">rVoix: Version 1.06 Build 58</string>
+<string name="SBuild">rVoix: Version 1.06 Build 91</string>
 
 <string name="RRMode">Start service</string>
 <string name="Settings">Settings</string>
@@ -58,8 +58,6 @@
 <item>Mute the ring</item>
 <item>Ask on each call</item>
 <item>In-call manual control</item>
-<item>Autoanswer</item>
-<item>Autoanswer+record</item>
 </string-array>
 
 <string-array name="InCallValues">
@@ -69,8 +67,6 @@
 <item>3</item>
 <item>4</item>
 <item>5</item>
-<item>6</item>
-<item>7</item>
 </string-array>
 
 <string name="SMode">Mode</string>
@@ -239,7 +235,8 @@
 
 <string name="SAA">Autoanswer</string>
 <string name="SAAR">Autoanswer + record</string>
-<string name="SAAF">Autoanswer files</string>
+
+<string name="SAAF">Autoanswer settings</string>
 
 <string name="SABlist">Numbers in blacklist</string>
 <string name="SAWlist">Numbers not in whitelist</string>
@@ -249,8 +246,8 @@
 <string name="SAANoFile">File not set</string>
 <string name="SAASndFile">Select sound file</string>
 
-<string name="SFDefaults">Default files [autoanswer mode]</string>
-<string name="SFDefaultsAR">Default files [autoanswer+rec mode]</string>
+<string name="SFDefaultAA">Autoanswer file</string>
+<string name="SFDefaultAR">Autoanswer+record file</string>
 
 <string name="SCantCreateSndDir">Cannot create "/sdcard/voix/sounds"</string>
 <string name="StartRecord">Start</string>
@@ -268,7 +265,31 @@
 
 <string name="SChFile">Change file</string>
 <string name="SChFileAndType">Change file and type</string>
-<string name="SExFileList">Files for specific numbers</string>
+<string name="SExFileList">Individual numbers</string>
 <string name="SExList">List of exceptions</string>
+
+
+<string-array name="AAModes">
+<item>Off</item>
+<item>Autoanswer</item>
+<item>Autoanswer+record</item>
+</string-array>
+
+<string-array name="AAModeValues">
+<item>0</item>
+<item>1</item>
+<item>2</item>
+</string-array>
+
+<string name="AADelay">Autoanswer delay</string>
+
+<string name="AAMode">Autoanswer mode</string>
+<string name="AATimeMsg">Enter delay in seconds</string>
+
+<string name="LoudAARec">Loud autoanswer recording</string>
+
+<string name="NowAnswering">Answering</string>
+<string name="NowRecording">Recording</string>
+
 </resources>
 

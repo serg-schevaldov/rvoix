@@ -66,13 +66,16 @@ public class AskOnCall extends Activity {
         	 });
          }
          public void encodingComplete() {
-        	 Log.dbg("encodingComplete()");
+        	 // Log.dbg("encodingComplete()");
          }
          public void recordingAboutToStart(boolean out, boolean inc, String p) {
-        	 Log.dbg("recordingAboutToStart()" + out + ", " + inc + ", " + p);
+        	 // Log.dbg("recordingAboutToStart()" + out + ", " + inc + ", " + p);
          }
          public void recordingStarted() {
-        	 Log.dbg("recordingStarted()");
+        	 // Log.dbg("recordingStarted()");
+         }
+         public void aarecordingStarted() {
+        	 // Log.dbg("aarecordingStarted()");
          }
 	};
 	Handler hdl = new Handler();
@@ -102,7 +105,7 @@ public class AskOnCall extends Activity {
 		incall = inintent.getBooleanExtra("incall",false);
 		phone = inintent.getStringExtra("phone");
 
-		Log.dbg("onCreate(): entry");
+		Log.dbg("onCreate()");
 	    
 		Intent intie = new Intent();
         intie.setClassName("com.voix", "com.voix.RVoixSrv");
@@ -169,8 +172,6 @@ public class AskOnCall extends Activity {
 			e.printStackTrace();
 		}
 		
-	  	Log.dbg("screen setup complete");
-	  
 	  	if(!incall) {
 
 	  		Button Ok = (Button) layout.findViewById(R.id.ButtonYes);
@@ -239,12 +240,11 @@ public class AskOnCall extends Activity {
   				}
   			});
   		}
-  		Log.dbg("onCreate(): exit");
 	}
 	@Override
 	public void onDestroy() {
         super.onDestroy();
-        Log.dbg("onDestroy() called");
+        Log.dbg("onDestroy()");
         if(dialog != null)dialog.dismiss();
         if(wm != null) wm.removeView(layout);
      	if(kl != null) kl.reenableKeyguard();

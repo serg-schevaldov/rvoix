@@ -41,13 +41,14 @@
 
 
 static int alive = 0;
-static int aa_record_started = 0;
+static int volatile aa_record_started = 0;
 static int boost_up = 0;
 static int boost_dn = 0;
 static char cur_file[256];
 static pthread_t rec1, rec2;
-static int fdx[2];
-static int fdo[2];
+
+static int volatile fdx[2] = {-1, -1}; 	/* device handles */
+static int volatile fdo[2] = {-1, -1}; 	/* output file handles */
 
 static JavaVM *gvm; 
 static jobject giface;
@@ -112,6 +113,7 @@ int start_record(JNIEnv* env, jobject obj, jstring jfile, jint jbu, jint jbd) {
     return 0;
 }
 
+
 void stop_record(JNIEnv* env, jobject obj, jint codec) {
 
     pthread_t k;
@@ -124,9 +126,15 @@ void stop_record(JNIEnv* env, jobject obj, jint codec) {
 	   if(aa_record_started) pthread_create(&k,0,encode_incoming,(void *)codec);
 	} else pthread_create(&k,0,encode,(void *)codec);	
 	pthread_mutex_unlock(&mutty);
-
+	log_info("codec=%d aa_rec=%d fd=%d",codec,aa_record_started,fdx[0]);
+	if(codec >= 2 && (aa_record_started || fdx[0] >= 0)) {
+	    log_info("waiting for safe stop");
+	    do {
+		usleep(100000);		
+	    } while(aa_record_started || fdx[0] >= 0);		
+	    log_info("safely stopped");	
+	}
 }
-
 
 
 void *record(void *init) {
@@ -203,7 +211,7 @@ void *record(void *init) {
 	    } else if(i <= READ_SIZE) {
 		i = write(fd_out,buff,i);
 		if(i < 0) {
-		    log_err("write error in %s thread", isup ? "uplink":"downlink");	
+		    log_info("write error in %s thread", isup ? "uplink":"downlink");	
 		    break;	
 		}
 	    }	
@@ -255,15 +263,23 @@ static void boost_buff(int16_t *buff, size_t bufsz, int boost) {
 }
 
 pthread_t clsup;
+
 void *closeup(void *used) {
    int both = (int) used;
-	log_info("in closeup thread");
+	log_info("entering closeup thread");
 /*	ioctl(fdx[0],VOCPCM_UNREGISTER_CLIENT,0);  */
-	close(fdx[0]); 
+	close(fdx[0]); fdx[0] = -1;
 /*	ioctl(fdx[1],VOCPCM_UNREGISTER_CLIENT,0);  */
-	if(both) close(fdx[1]); 
+	if(both) {
+	    close(fdx[1]); 
+	    fdx[1] = -1;	
+	}
 	pthread_join(rec1,0);
+#if 0
 	if(both) pthread_join(rec2,0);
+#else
+	pthread_join(rec2,0); /* for dummy_write thread */
+#endif
 	log_info("recorder thread%s joined", both ? "s": "");
         recording_complete();
   return 0;	
@@ -282,7 +298,7 @@ void *encode(void *init) {
     struct timeval start, stop, tm;
     off_t off1, off2, off_out;	
 	
-	log_info("in encode thread");
+	log_info("entering encode thread");
 
 	strcpy(fn,cur_file);
 
@@ -296,6 +312,7 @@ void *encode(void *init) {
 	     log_info("deleting at user request");	
 	     sprintf(file, OUT_DIR "/%s-up",fn); unlink(file);
              sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
+	     encoding_complete();	
 	     return 0;	
 	}
 
@@ -311,6 +328,7 @@ void *encode(void *init) {
 		close(fd2); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
 	     } 
 	     log_err("encode: input file not found");
+	     encoding_complete();
 	     return 0;		
 	}
 
@@ -326,6 +344,7 @@ void *encode(void *init) {
 	     log_err("encode: cannot open output file %s",file);
              close(fd1); sprintf(file, OUT_DIR "/%s-up",fn); unlink(file);
              close(fd2); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
+	     encoding_complete();	
 	     return 0;		
 	}
 
@@ -348,6 +367,7 @@ void *encode(void *init) {
 	     close(fd_out); unlink(file);
 	     close(fd1); sprintf(file, OUT_DIR "/%s-up",fn); unlink(file);		
 	     close(fd2); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
+	     encoding_complete();	
 	     return 0;			
 	}
 
@@ -379,6 +399,7 @@ void *encode(void *init) {
              close(fd_out); unlink(file);
              close(fd1); sprintf(file, OUT_DIR "/%s-up",fn); unlink(file);
              close(fd2); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
+	     encoding_complete();
 	     return 0;			
 	}
 #define CHSZ (512*1024)
@@ -394,6 +415,7 @@ void *encode(void *init) {
              close(fd_out); unlink(file);
              close(fd1); sprintf(file, OUT_DIR "/%s-up",fn); unlink(file);
              close(fd2); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
+	     encoding_complete();	
              return 0;
         }
 	k = 0;
@@ -443,6 +465,7 @@ void *encode(void *init) {
              close(fd_out); unlink(file);
              close(fd1); sprintf(file, OUT_DIR "/%s-up",fn); unlink(file);
              close(fd2); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
+	     encoding_complete();
              return 0;
         }
 
@@ -529,12 +552,15 @@ void *encode(void *init) {
 
 /******   Answer the incoming call  ******/
 static void *say_them(void *);
+static void *dummy_write(void *p);
 
 /***** Java callback to hangup. Not reached on Hero 
 (the phone rather hangs itself or reboots) *****/
 static void  call_java2hangup();
+static void  aa_rec_started();
 
 static int aa_file = -1;
+static int aa_fd = -1;
 
 void answer_call(JNIEnv* env, jobject obj, jstring jfile, jstring ofile, jint jbd) {
 
@@ -543,6 +569,7 @@ void answer_call(JNIEnv* env, jobject obj, jstring jfile, jstring ofile, jint jb
 	
 	log_info("in answer_call");
 	aa_record_started = 0;
+	aa_fd = -1;	
 
         file = (*env)->GetStringUTFChars(env,jfile,NULL);
         if(!file || !*file) {
@@ -575,24 +602,24 @@ void answer_call(JNIEnv* env, jobject obj, jstring jfile, jstring ofile, jint jb
 	pthread_create(&pt,0,say_them,0);
 }
 
+
 static void *say_them(void *p) {
 
-    int  fd;
     char *buff;
 
 	log_info("in say_them() thread");
 
-	fd = open("/dev/voc_tx_playback", O_RDWR);
-        if(fd < 0)  {
-            fd = open("/dev/vocpcm3",O_RDWR);
-            if(fd < 0) {
+	aa_fd = open("/dev/voc_tx_playback", O_RDWR);
+        if(aa_fd < 0)  {
+            aa_fd = open("/dev/vocpcm3",O_RDWR);
+            if(aa_fd < 0) {
 		close(aa_file); aa_file = -1;
                 log_err("cannot open playback driver"); 
 		return 0;
             }
         }
-        if(ioctl(fd,VOCPCM_REGISTER_CLIENT,0) < 0) {
-            close(fd); close(aa_file); aa_file = -1;
+        if(ioctl(aa_fd,VOCPCM_REGISTER_CLIENT,0) < 0) {
+            close(aa_fd); close(aa_file); aa_file = -1;
             log_err("cannot register rpc client for playback"); 
 	    return 0;
         }
@@ -600,8 +627,8 @@ static void *say_them(void *p) {
 	buff = (char *) malloc(BUFFER_SIZE);
 	memset(buff,0,BUFFER_SIZE);
 
-	write(fd,buff,BUFFER_SIZE);
-	write(fd,buff,BUFFER_SIZE);
+	write(aa_fd,buff,BUFFER_SIZE);
+	write(aa_fd,buff,BUFFER_SIZE);
 
         log_info("answering...");
 	alive = 1;
@@ -610,7 +637,7 @@ static void *say_them(void *p) {
 	    int i,m;
 	    i  = read(aa_file,buff,BUFFER_SIZE);
 	    if(i <= 0) break;
-	    m = write(fd,buff,i);
+	    m = write(aa_fd,buff,i);
 	    if(m < 0)  {
 		log_info("playback: i'm probably closed from outside");
 		pthread_mutex_lock(&mutty);	
@@ -620,12 +647,17 @@ static void *say_them(void *p) {
 	    }	
 	}
 
-/*	ioctl(fd,VOCPCM_UNREGISTER_CLIENT,0); */
-        close(fd);
+/*	ioctl(aa_fd,VOCPCM_UNREGISTER_CLIENT,0); */
 	close(aa_file);
 	aa_file = -1;
+#if 0
+        close(aa_fd);
+	aa_fd = -1;
+#endif
 	free(buff);
 	if(!alive || *cur_file == 0) {
+	    close(aa_fd);
+	    aa_fd = -1;		
             log_info("now hanging up in java");
 	    call_java2hangup();
 	} else {
@@ -634,8 +666,29 @@ static void *say_them(void *p) {
             pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
         /* records incoming sound data */
             pthread_create(&rec1,&attr,record,(void *) 0);
+#if 1
+            pthread_create(&rec2,&attr,dummy_write,(void *) 0);
+#endif
+	    aa_rec_started();	
 	}
     return 0;	
+}
+
+static void *dummy_write(void *p) {
+
+   char *buff;	
+	buff = (char *) malloc(BUFFER_SIZE);
+        memset(buff,0,BUFFER_SIZE);
+	log_info("in dummy_write thread");
+	if(aa_fd < 0) return 0;
+/*	while(alive) {	
+	   if(write(aa_fd,buff,BUFFER_SIZE) < 0) break;	
+	} */
+	close(aa_fd);
+	aa_fd = -1;
+	free(buff);
+	log_info("exiting dummy_write thread");
+   return 0;
 }
 
 void *encode_incoming(void *init) {
@@ -664,6 +717,7 @@ void *encode_incoming(void *init) {
 	if(fd1 < 0) {
 	     sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
 	     log_err("encode: input file not found");
+	     encoding_complete();
 	     return 0;		
 	}
 #ifdef USING_LAME
@@ -676,6 +730,7 @@ void *encode_incoming(void *init) {
 	if(fd_out < 0) {
 	     log_err("encode: cannot open output file %s",file);
              close(fd1); sprintf(file, OUT_DIR "/%s-up",fn); unlink(file);
+	     encoding_complete(); 
 	     return 0;		
 	}
 	i = (uint32_t) lseek(fd1,0,SEEK_END);
@@ -685,6 +740,7 @@ void *encode_incoming(void *init) {
 	     log_info("zero size input file");
 	     close(fd_out); unlink(file);
 	     close(fd1); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);		
+	     encoding_complete();
 	     return 0;			
 	}
 #ifdef USING_LAME
@@ -714,6 +770,7 @@ void *encode_incoming(void *init) {
 	     log_err("encode: failed to init lame"); 	
              close(fd_out); unlink(file);
              close(fd1); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
+	     encoding_complete();
 	     return 0;			
 	}
 #define CHSZ (512*1024)
@@ -726,8 +783,10 @@ void *encode_incoming(void *init) {
              if(b1) free(b1);
              close(fd_out); unlink(file);
              close(fd1); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
+	     encoding_complete();
              return 0;
         }
+	aa_record_started = 0;
 	k = 0;
 	do {
 	   int ret = 0;	
@@ -765,8 +824,10 @@ void *encode_incoming(void *init) {
              log_err("encode: out of memory");
              close(fd_out); unlink(file);
              close(fd1); sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
+	     encoding_complete();
              return 0;
         }
+	aa_record_started = 0;
 	wavhdr.num_channels = 1;
 	wavhdr.byte_rate = 16000;
 	wavhdr.block_align = 2;
@@ -791,7 +852,7 @@ void *encode_incoming(void *init) {
 	if(b0) free(b0); if(b1) free(b1);;	
 	gettimeofday(&stop,0);
         timersub(&stop,&start,&tm);
-        log_info("encoding complete: %ld -> %ld in %ld sec", off1, off_out, tm.tv_sec);
+        log_info("encode_incoming complete: %ld -> %ld in %ld sec", off1, off_out, tm.tv_sec);
 	sprintf(file, OUT_DIR "/%s-dn",fn); unlink(file);
 	encoding_complete();
     return 0; 
@@ -838,6 +899,10 @@ static void encoding_complete() {
    log_dbg("java onEncodingComplete notified");
 }
 
+static void aa_rec_started() {
+   call_java_callback("onAutoanswerRecordingStarted");
+   log_dbg("java onAutoanswerRecordingStarted notified");
+}
 
 
 /********************************************
