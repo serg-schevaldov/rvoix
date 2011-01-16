@@ -2,10 +2,10 @@
 
 This page details the processing of incoming calls in rVoix.
 
-
-Basically, this program first filters all incoming calls using black/white lists, and then handles the remaining calls
+Basically, the program first filters all incoming calls using black/white lists, and then handles the remaining calls
 according to settings specified for different call types and for individual phone numbers.
-The processing of all (filtered or not) calls may also be overridden by auto-answer settings.
+
+The processing of all (filtered or not) calls may also be overridden by auto-answer settings which may effectively suppress the default processing and .
 
 The call types are:
 
@@ -50,7 +50,7 @@ http://img11.imageshack.us/img11/4721/drawing02.png
 
 b) _Regular calls_
 
-http://img35.imageshack.us/img35/7623/drawing03.png
+http://img194.imageshack.us/img194/7623/drawing03.png
 
 The delay in this Figure is defined by "Autoanswer delay" setting either for the respective incoming call type, or for individual numbers if the number is found in "Autoanswer settings->Exceptions".
 
@@ -70,7 +70,7 @@ Note that if "Autoanswer" mode in "Autoanswer settings->Numbers ..." is "Off," n
 
 *So, if you have a device that does not support auto-answering, make sure that the modes for all call types in "Autoanswer settings" are "Off," do not select auto-answering modes for white lists, and check that no number has "Autoanswer" or "Autoanswer+record" type in Blacklist or in Exceptions*.
 
-
+Pressing "Cancel" button when an auto-answer or caller's recording is in progress will fall back to the mode which would be used if the auto-answer hadn't been activated. That is, everything that the caller might have said before this moment will be saved as usual in an "A"-prefixed file, and the subsequent part of your conversation might be recorded in an "I"-prefixed file.
 
 
 
