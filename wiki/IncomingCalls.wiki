@@ -2,10 +2,10 @@
 
 This page details the processing of incoming calls in rVoix.
 
-Basically, the program first filters all incoming calls using black/white lists, and then handles the remaining calls
-according to settings specified for different call types and for individual phone numbers.
+Basically, the service first filters all incoming calls using black/white lists, and then handles remaining calls
+according to default settings specified for different call types as well as to settings for individual phone numbers.
 
-The processing of all (filtered or not) calls may also be overridden by auto-answer settings which may effectively suppress the default processing and .
+The processing of all (filtered or not) calls may also be overridden by auto-answer settings which may effectively suppress the default processing.
 
 The call types are:
 
@@ -25,7 +25,7 @@ The last option is experimental, and may be used to start/stop recording of mult
 
 These settings are defined in main "Incoming calls" menu.
 
-As for the filtering, you may maintain multiple black and white lists, quickly reloading them using "Load" command from menu.
+As for call filtering, you may maintain multiple black and white lists, quickly reloading them using "Load" command from menu.
 
 Only *one* list (either black or white) may be active at each specific time moment.
 This is defined by "Blacklists and exceptions -> B/W lists mode" setting (see Figure below).
@@ -35,9 +35,8 @@ The "Black lists and exceptions->Exceptions" list for individual numbers is igno
 is active (i.e., the B/W lists mode is not "Off"): it is used to override further default processing of (known) numbers
 for the first two call types. 
 
-However, the "Autoanswer settings->Exceptions" list may be used to override the default
-auto-answer files for those lists.
-As shown in the following Figure, the auto-answer is _always immediate_ for black and white lists, moreover, in case of black lists,
+However, the "Autoanswer settings->Exceptions" list may be used to override the default auto-answer files for those lists.
+As shown in the following Figure, an auto-answer is _always immediate_ for black and white lists, moreover, in case of black lists,
 the callers' answers are never recorded.
 
 http://img3.imageshack.us/img3/8017/drawing01.png
@@ -71,8 +70,6 @@ Note that if "Autoanswer" mode in "Autoanswer settings->Numbers ..." is "Off," n
 *So, if you have a device that does not support auto-answering, make sure that the modes for all call types in "Autoanswer settings" are "Off," do not select auto-answering modes for white lists, and check that no number has "Autoanswer" or "Autoanswer+record" type in Blacklist or in Exceptions*.
 
 Pressing "Cancel" button when an auto-answer or caller's recording is in progress will fall back to the mode which would be used if the auto-answer hadn't been activated. That is, everything that the caller might have said before this moment will be saved as usual in an "A"-prefixed file, and the subsequent part of your conversation might be recorded in an "I"-prefixed file.
-
-
 
 
 
