@@ -242,17 +242,32 @@
   </PreferenceCategory>
 
   <PreferenceCategory
-    android:title="@string/SShortCalls">
+    android:title="@string/SShortOutCalls">
   	<EditTextPreference
 		android:key="min_out_time"
 		android:defaultValue="0"
-		android:dialogMessage="@string/SBkMinOutTimeMsg"
+		android:dialogMessage="@string/SBkMinTimeMsg"
 		android:numeric="integer" 
-		android:maxLength="3"
-		android:title="@string/SBkMinOutTime" />
+		android:maxLength="4"
+		android:title="@string/SBkMinTime" />
   	<CheckBoxPreference
 		android:key="min_out_confirm"
-	    android:title="@string/SMOConfirm" 
+	    android:title="@string/SMConfirm" 
+	    android:defaultValue="true"/>
+  </PreferenceCategory>
+
+  <PreferenceCategory
+    android:title="@string/SShortInCalls">
+  	<EditTextPreference
+		android:key="min_in_time"
+		android:defaultValue="0"
+		android:dialogMessage="@string/SBkMinTimeMsg"
+		android:numeric="integer" 
+		android:maxLength="4"
+		android:title="@string/SBkMinTime" />
+  	<CheckBoxPreference
+		android:key="min_in_confirm"
+	    android:title="@string/SMConfirm" 
 	    android:defaultValue="true"/>
   </PreferenceCategory>
 

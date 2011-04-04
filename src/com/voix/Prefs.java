@@ -79,7 +79,7 @@ public class Prefs extends PreferenceActivity
 			m.setSummary(getString(R.string.SCurVal) + " " + settings.getString(s, "0"));
 		}
 			
-		String []y = {"max_files", "max_storage", "max_time", "min_out_time", "nc_aa_delay", "cn_aa_delay", "un_aa_delay", "ex_aa_delay"};
+		String []y = {"max_files", "max_storage", "max_time", "min_out_time", "nc_aa_delay", "cn_aa_delay", "un_aa_delay", "ex_aa_delay", "min_in_time"};
 		for(String s : y) {
 			EditTextPreference e = (EditTextPreference) screen.findPreference(s);
 			e.setSummary(getString(R.string.SCurVal) + " " + settings.getString(s, "0")); 

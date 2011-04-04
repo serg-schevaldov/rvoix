@@ -3,7 +3,7 @@
     
 <string name="app_name">rVoix</string>
 
-<string name="SBuild">rVoix: Версия 1.06 Сборка 91</string>
+<string name="SBuild">rVoix: Версия 1.06 Сборка 117</string>
 
 <string name="RRMode">Запустить сервис</string>
 <string name="Settings">Настройки</string>
@@ -58,8 +58,6 @@
 <item>Отключать звонок</item>
 <item>Всегда спрашивать</item>
 <item>Запуск вручную во время звонка</item>
-<item>Автоответ</item>
-<item>Автоответ+запись</item>
 </string-array>
 
 <string-array name="InCallValues">
@@ -69,8 +67,6 @@
 <item>3</item>
 <item>4</item>
 <item>5</item>
-<item>6</item>
-<item>7</item>
 </string-array>
 
 <string name="SMode">Режим</string>
@@ -135,7 +131,7 @@
 <string name="SBkMaxFilesMsg">Введите число (0 - без ограничений)</string>
 <string name="SBkMaxSizeMsg">Введите размер в мегабайтах (0 - без ограничений)</string>
 <string name="SBkMaxTimeMsg">Введите число дней (0 - без ограничений)</string>
-<string name="SBkMinOutTimeMsg">Введите время в секундах (0 - без ограничений)</string>
+<string name="SBkMinTimeMsg">Введите время в секундах (0 - без ограничений)</string>
 
 <string name="SCurVal">Текущая установка:</string>
 
@@ -144,9 +140,10 @@
 <string name="SMRevTime">Старые начала</string>
 <string name="SMFilter">Поиск</string>
 
-<string name="SShortCalls">Короткие исходящие звонки</string>
-<string name="SBkMinOutTime">Мин. время звонка</string>
-<string name="SMOConfirm">Подтверждать удаление</string>
+<string name="SShortOutCalls">Короткие исходящие звонки</string>
+<string name="SShortInCalls">Короткие входящие звонки</string>
+<string name="SBkMinTime">Мин. время звонка</string>
+<string name="SMConfirm">Подтверждать удаление</string>
 <string name="SCallTooShort">Звонок слишком короткий. Удалить?</string>
 
 <string name="SBL">Ч/Б списки и исключения</string>
@@ -183,7 +180,7 @@
 <string name="SOK">OK</string>
 
 <string name="SListActive">Есть номера</string>
-<string name="SListInactive">Пустой</string>
+<string name="SListInactive">Список пуст</string>
 
 <string name="SBLWlist">Белый список</string>
 <string name="SBLBlist">Черный список</string>
@@ -284,13 +281,9 @@
 </string-array>
 
 <string name="AADelay">Задержка автоответа</string>
-
 <string name="AAMode">Режим автоответа</string>
-
 <string name="AATimeMsg">Введите задержку в секундах</string>
-
-<string name="LoudAARec">Громкая запись автоответа</string>
-
+<string name="LoudAARec">Включение динамика</string>
 <string name="NowAnswering">Отвечаю</string>
 <string name="NowRecording">Записываю</string>
 
