@@ -100,8 +100,10 @@ public class RVoixSrv extends Service {
 	private int boost_up = 0;
 	private int boost_dn = 0;
 	private long min_out_time = 0;
+	private long min_in_time = 0;
 	private long start_time = 0;
 	private boolean min_out_confirm = true;
+	private boolean min_in_confirm = true;
 	private int wait_confirm_result = 0; 
 	private boolean logging = false;
 	private boolean disable_notifications = false;
@@ -248,8 +250,10 @@ public class RVoixSrv extends Service {
 
     public enum CBack { ENC_CMPL, REC_CMPL, DONE, REC_START, AA_REC_START  }
     
+    public static final Object broad_sync = new Object();
     private static void broadcastActivities(CBack cb) {
-        final int k = cBacks.beginBroadcast();
+    	synchronized(broad_sync) {
+    		final int k = cBacks.beginBroadcast();
             Log.dbg("broadcastActivities(): broadcasting " + cb);
         	for (int i=0; i < k; i++) {
             	try {
@@ -267,6 +271,7 @@ public class RVoixSrv extends Service {
             	}
             }
         	cBacks.finishBroadcast();
+    	}
     }
 
     private static void broadcastAboutToRecord(boolean is_outgoing, boolean is_incall, String p) {
@@ -1018,6 +1023,7 @@ public class RVoixSrv extends Service {
         	   			case INCOMING_NCONT:
         	   				if(call_proc == INCOMING_ACT_REC) {
         	   					broadcastAboutToRecord(false, false, inc_number);
+        	   					start_time = System.currentTimeMillis();
         	   					break; // record
         	   				} else if(call_proc == INCOMING_ACT_ASK_INCALL) {
         	   					startAskActivity(context, false, true);
@@ -1058,11 +1064,14 @@ public class RVoixSrv extends Service {
        	    		
                } else if(s.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
 
-            	   	if(aa_mode == AA_MODE_AUTOANSWER_RECORD) {
-            	   		stopRecord(srv_mode | 2);	// built-in in the library
-            	   		broadcastActivities(CBack.DONE);
-            	   		set_defaults();
-                	   	return;
+            	   	synchronized(aa_sync) {
+            	   		auto_answering_cancelled = true;
+            	   		if(aa_mode == AA_MODE_AUTOANSWER_RECORD) {
+            	   			stopRecord(srv_mode | 2);	// built-in in the library
+            	   			broadcastActivities(CBack.DONE);
+            	   			set_defaults();
+            	   			return;
+            	   		}
             	   	}
             	   	if(ask_incall_started || ask_in_progress) {
        	    			Log.msg("stopping AskActivity");
@@ -1072,20 +1081,33 @@ public class RVoixSrv extends Service {
             	    if(recording) {
        	    			Log.msg("stop recording");
        	    			encoding = true;
-       	    			if(start_time != 0 && min_out_time != 0 && call_proc != INCOMING_ACT_ASK_INCALL
-       	    					&& call_proc != OUTGOING_REC_ASK_INCALL) {
+       	    			if(start_time != 0 && (
+       	    					(min_in_time != 0 && call_proc == INCOMING_ACT_REC) ||
+       	    					(min_out_time != 0 && call_proc == OUTGOING_REC_ALL))) {
+ 
        	    				long ctime = System.currentTimeMillis();
-       	    				if(ctime - start_time < min_out_time) {
-       	    					if(!min_out_confirm) {
+       	    				long min_time;
+       	    				boolean min_confirm;
+       	    				
+       	    				if(call_proc == INCOMING_ACT_REC) {
+       	    					min_time = min_in_time;
+       	    					min_confirm = min_in_confirm;
+       	    				} else {
+       	    					min_time = min_out_time;
+       	    					min_confirm = min_out_confirm;
+       	    				}
+       	    				
+       	    				if(ctime - start_time < min_time) {
+       	    					if(!min_confirm) {
            	    					Log.dbg("elapsed=" + (ctime - start_time) + ", min=" 
-           	    							+ min_out_time + ", deleting the recording");
+           	    							+ min_time + ", deleting the recording");
        	    						stopRecord(-1);
        	    						if(log != null) log.write("Recording took "+ (ctime - start_time)/1000 +
-       	    								"s, min value in settings="+min_out_time/1000+"s, deleted");
+       	    								"s, min value in settings="+min_time/1000+"s, deleted");
        	    					} else if(lastFile != null){
        	    						if(log != null) log.write("Recording too short, asking user");
        	    						Log.dbg("elapsed=" + (ctime - start_time) + ", min=" 
-           	    						+ min_out_time + ", trying to ask whether to delete the recording");
+           	    						+ min_time + ", trying to ask whether to delete the recording");
        	    						String ff = new String(lastFile);
        	    						ff += (srv_mode ==MODE_RECORD_WAV) ? ".wav" : ".mp3";
        	    						stopRecord(srv_mode);
@@ -1134,12 +1156,7 @@ public class RVoixSrv extends Service {
 						telephony.invoke("answerRingingCall");
 						auto_answering = true;
 						answerCall(aafile, rrfile, boost_dn);
-						(new Timer()).schedule(new TimerTask() {
-							@Override
-							public void run() {	
-								startAACancelActivity();
-							}
-						}, 2000);
+						startAACancelActivity();
 					}
 				}
 				Log.msg("number " + inc_number + ": call auto answered, rec_file=" + rrfile);
@@ -1163,7 +1180,12 @@ public class RVoixSrv extends Service {
 						telephony.invoke("answerRingingCall");
 						auto_answering = true;
 						answerCall(aa_file, rec_file, boost_dn);
-						startAACancelActivity();
+						(new Timer()).schedule(new TimerTask() {
+							@Override
+							public void run() {	
+								startAACancelActivity();
+							}
+						}, 1000);
 					}	
 				}
 				Log.msg("number " + inc_number + ": call auto answered, rec_file=" + rec_file);
@@ -1185,7 +1207,7 @@ public class RVoixSrv extends Service {
  	   	startActivity(intie);
  	   	ask_in_progress = true;
 	}
-	
+			
 	void onAACancel() {
 		Log.dbg("onAACancel(): entry");
 		synchronized(aa_sync) {
@@ -1305,6 +1327,7 @@ public class RVoixSrv extends Service {
 		logging = settings.getBoolean("logging", false);
 		is_tattoo = settings.getBoolean("is_tattoo", false);
 		min_out_confirm = settings.getBoolean("min_out_confirm", true);
+		min_in_confirm = settings.getBoolean("min_in_confirm", true);
 		loud_aa_rec = settings.getBoolean("loud_aa_rec", false);
 		try {
 			srv_mode = Integer.parseInt(settings.getString("format", "0"));
@@ -1316,6 +1339,8 @@ public class RVoixSrv extends Service {
 			ncont_proc = Integer.parseInt(settings.getString("numbers_not_in_contacts", "1"));
 			min_out_time = Integer.parseInt(settings.getString("min_out_time", "0"));
 			min_out_time *= 1000; // seconds -> milliseconds
+			min_in_time = Integer.parseInt(settings.getString("min_in_time", "0"));
+			min_in_time *= 1000; // seconds -> milliseconds
 			bmode = Integer.parseInt(settings.getString("bmode", "0"));
 			nc_aa_mode = Integer.parseInt(settings.getString("nc_aa_mode", "0"));
 			cn_aa_mode = Integer.parseInt(settings.getString("cn_aa_mode", "0"));
@@ -1524,9 +1549,10 @@ public class RVoixSrv extends Service {
 			try {
 				File f = new File(logfile);
 				writer = new BufferedWriter(new FileWriter(f, true), 8192);
-			} catch (IOException e) {
+			} catch (Exception e) {
 				e.printStackTrace();
-				Log.err("exception trying to create logger");
+				Log.err("exception while trying to create logger");
+				writer = null;
 			}			
 		}
 		void write(String s) {

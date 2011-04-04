@@ -41,6 +41,7 @@ public class BootRec extends BroadcastReceiver {
         DataOutputStream os = null;
 	    File f1 = new File("/dev/voc_tx_record");
         File f2 = new File("/dev/vocpcm2");
+        File mod = new File("/system/lib/modules/vocpcm.ko");
         boolean olddevs = false;
         		try {
                         if(f1.exists()) {	
@@ -48,7 +49,18 @@ public class BootRec extends BroadcastReceiver {
                         } else if(f2.exists()){
                         	if(f2.canRead() && f2.canWrite()) return true;
                         	olddevs = true;
+                        } else if(mod.exists()) {
+                        	Log.msg("vocpcm module found, trying to load it");
+                            process = Runtime.getRuntime().exec("su -c insmod /system/lib/modules/vocpcm.ko");
+                        	process.waitFor();
+                        	process.destroy(); process = null; 
+                        	f1 = new File("/dev/voc_rx_record");
+                        	if(!f1.exists()) {
+                        		Log.err("module failed to create devices, exiting");
+                        		return false;
+                        	}
                         } else return false;
+                        
                         process = Runtime.getRuntime().exec("su");
                         os = new DataOutputStream(process.getOutputStream());
                         os.flush();
@@ -61,8 +73,7 @@ public class BootRec extends BroadcastReceiver {
                         	os.writeBytes("chmod 0666 /dev/voc_rx_record\n"); os.flush();
                         	os.writeBytes("chmod 0666 /dev/voc_tx_playback\n"); os.flush();
                         }
-                        os.writeBytes("exit\n");
-                        os.flush();
+                        os.writeBytes("exit\n"); os.flush();
                         process.waitFor();
                 } catch (Exception e) {
                 		Log.err("exception in checkSetDevicePermissions()");

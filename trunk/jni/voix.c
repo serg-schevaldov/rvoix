@@ -21,6 +21,7 @@
 #define VOCPCM_IOCTL_MAGIC 'v'
 #define VOCPCM_REGISTER_CLIENT          _IOW(VOCPCM_IOCTL_MAGIC, 0, unsigned)
 #define VOCPCM_UNREGISTER_CLIENT        _IOW(VOCPCM_IOCTL_MAGIC, 1, unsigned)
+
 #define FRAME_NUM       (12)
 #define FRAME_SIZE      (160)
 #define BUFFER_NUM      (2)
@@ -201,7 +202,7 @@ void *record(void *init) {
 	    int i = read(fd,buff,READ_SIZE);
 	    if(i < 0) {
 		err_count++;
-		log_info("read error in %s thread", isup ? "uplink":"downlink");
+		log_info("read error %i in %s thread", i, isup ? "uplink":"downlink");
 		if(err_count == MAX_ERR_COUNT) {
 		   log_err("max read err count in %s thread reached", isup ? "uplink":"downlink");	
 		   break;
@@ -267,12 +268,11 @@ pthread_t clsup;
 void *closeup(void *used) {
    int both = (int) used;
 	log_info("entering closeup thread");
-/*	ioctl(fdx[0],VOCPCM_UNREGISTER_CLIENT,0);  */
-	close(fdx[0]); fdx[0] = -1;
-/*	ioctl(fdx[1],VOCPCM_UNREGISTER_CLIENT,0);  */
+	ioctl(fdx[0],VOCPCM_UNREGISTER_CLIENT,0);
+	close(fdx[0]);     fdx[0] = -1;
 	if(both) {
-	    close(fdx[1]); 
-	    fdx[1] = -1;	
+	    ioctl(fdx[1],VOCPCM_UNREGISTER_CLIENT,0);
+	    close(fdx[1]); fdx[1] = -1;	
 	}
 	pthread_join(rec1,0);
 #if 0
@@ -647,7 +647,6 @@ static void *say_them(void *p) {
 	    }	
 	}
 
-/*	ioctl(aa_fd,VOCPCM_UNREGISTER_CLIENT,0); */
 	close(aa_file);
 	aa_file = -1;
 #if 0
@@ -656,6 +655,7 @@ static void *say_them(void *p) {
 #endif
 	free(buff);
 	if(!alive || *cur_file == 0) {
+	    ioctl(aa_fd,VOCPCM_UNREGISTER_CLIENT,0);
 	    close(aa_fd);
 	    aa_fd = -1;		
             log_info("now hanging up in java");
@@ -681,9 +681,10 @@ static void *dummy_write(void *p) {
         memset(buff,0,BUFFER_SIZE);
 	log_info("in dummy_write thread");
 	if(aa_fd < 0) return 0;
-/*	while(alive) {	
+	while(alive) {	
 	   if(write(aa_fd,buff,BUFFER_SIZE) < 0) break;	
-	} */
+	}
+	ioctl(aa_fd,VOCPCM_UNREGISTER_CLIENT,0);
 	close(aa_fd);
 	aa_fd = -1;
 	free(buff);

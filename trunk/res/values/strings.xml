@@ -3,7 +3,7 @@
     
 <string name="app_name">rVoix</string>
 
-<string name="SBuild">rVoix: Version 1.06 Build 91</string>
+<string name="SBuild">rVoix: Version 1.06 Build 118</string>
 
 <string name="RRMode">Start service</string>
 <string name="Settings">Settings</string>
@@ -131,7 +131,7 @@
 <string name="SBkMaxFilesMsg">Enter a number (0 - no limit)</string>
 <string name="SBkMaxSizeMsg">Enter a value in megabytes (0 - no limit)</string>
 <string name="SBkMaxTimeMsg">Enter a value in days (0 - no limit)</string>
-<string name="SBkMinOutTimeMsg">Enter a value in seconds</string>
+<string name="SBkMinTimeMsg">Enter a value in seconds</string>
 
 <string name="SCurVal">Current setting:</string>
 
@@ -140,9 +140,10 @@
 <string name="SMRevTime">Time reverse</string>
 <string name="SMFilter">Search</string>
 
-<string name="SShortCalls">Short outgoing calls</string>
-<string name="SBkMinOutTime">Min. call time</string>
-<string name="SMOConfirm">Confirm delete</string>
+<string name="SShortOutCalls">Short outgoing calls</string>
+<string name="SShortInCalls">Short incoming calls</string>
+<string name="SBkMinTime">Min. call time</string>
+<string name="SMConfirm">Confirm delete</string>
 <string name="SCallTooShort">Call too short. Delete?</string>
 
 <string name="SBL">Blacklists and exceptions</string>
@@ -179,7 +180,7 @@
 <string name="SOK">OK</string>
 
 <string name="SListActive">Phones present</string>
-<string name="SListInactive">Empty</string>
+<string name="SListInactive">List is empty</string>
 
 <string name="SBLWlist">White list</string>
 <string name="SBLBlist">Black list</string>
@@ -235,7 +236,6 @@
 
 <string name="SAA">Autoanswer</string>
 <string name="SAAR">Autoanswer + record</string>
-
 <string name="SAAF">Autoanswer settings</string>
 
 <string name="SABlist">Numbers in blacklist</string>
@@ -268,7 +268,6 @@
 <string name="SExFileList">Individual numbers</string>
 <string name="SExList">List of exceptions</string>
 
-
 <string-array name="AAModes">
 <item>Off</item>
 <item>Autoanswer</item>
@@ -282,12 +281,9 @@
 </string-array>
 
 <string name="AADelay">Autoanswer delay</string>
-
 <string name="AAMode">Autoanswer mode</string>
 <string name="AATimeMsg">Enter delay in seconds</string>
-
-<string name="LoudAARec">Loud autoanswer recording</string>
-
+<string name="LoudAARec">Speakerphone on autoanswer</string>
 <string name="NowAnswering">Answering</string>
 <string name="NowRecording">Recording</string>
 
