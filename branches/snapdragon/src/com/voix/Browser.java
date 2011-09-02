@@ -114,7 +114,7 @@ public class Browser extends ListActivity {
 			String file = files[i].toString();
 			if(file.length() < dirlen+18) continue;
 			boolean isfav = favs.contains(file);
-			if(file.endsWith(".wav") || file.endsWith(".mp3")) {
+			if(file.endsWith(".wav") || file.endsWith(".mp3") || file.endsWith(".amr") || file.endsWith(".aac")) {
 				long mtime = files[i].lastModified();
 				long fsize = files[i].length();
 				if(flt != null && !file.substring(dirlen+13).startsWith(flt)) continue;
@@ -145,11 +145,12 @@ public class Browser extends ListActivity {
 	void getAcList() {
 		File[] files = (new File(voixdir)).listFiles();
 		ac_items.clear();
+		if(files == null) return;
 		Log.dbg("getAcList(): entry");
 		if(files == null) return;
 		for(int i = 0; i < files.length; i++) {
 			String file = files[i].toString();
-			if(file.endsWith(".wav") || file.endsWith(".mp3")) {
+			if(file.endsWith(".wav") || file.endsWith(".mp3") || file.endsWith(".amr") || file.endsWith(".aac")) {
 				if(file.charAt(dirlen+1) == '-' && (file.charAt(dirlen)=='I' 
 					|| file.charAt(dirlen)=='O' || file.charAt(dirlen)=='A')) { 
 					String s = ac_trim(file);
@@ -240,7 +241,13 @@ public class Browser extends ListActivity {
         	}
         	String f = recordings.get(pos).fname;
         	Intent intie = new Intent(Intent.ACTION_VIEW); 
-        	intie.setDataAndType(Uri.fromFile(new File(f)), f.endsWith("wav") ? "audio/wav" : "audio/mp3");
+        	String mime;
+        	if(f.endsWith("wav")) mime = "audio/wav";
+        	else if(f.endsWith("mp3")) mime = "audio/mp3";
+        	else if(f.endsWith("amr")) mime = "audio/amr";
+        	else if(f.endsWith("aac")) mime = "audio/aac";
+        	else return;
+        	intie.setDataAndType(Uri.fromFile(new File(f)), mime);
         	Log.msg("start playing " + f);
         	if(favs.dirty) favs.write();
         	startActivity(intie);
@@ -388,7 +395,7 @@ public class Browser extends ListActivity {
 	   Log.dbg("onActivityResult() code="+requestCode+", result=" +resultCode);
 	   resetAdapter(requestCode == 2 || resultCode == 1);
    }
-   
+      
 /////////////////////// Helper functions
    @SuppressWarnings("boxing")
    String trim(String file, long sz) {
@@ -397,9 +404,8 @@ public class Browser extends ListActivity {
 		try {
 			String tm;
 			if(file.endsWith("wav") && size != 0) {
-				if(file.charAt(dirlen) == 'A') size = (size-44)/(8000*2);
-				else size = (size-44)/(8000*4);
-			} else {
+				size = (size-44)/(8000*2);
+			} else if(file.endsWith("mp3")) {
 				FileInputStream fip = new FileInputStream(new File(file));
 				try {
 					byte[] bb = new byte[12];
@@ -416,7 +422,10 @@ public class Browser extends ListActivity {
 				} finally {
 					fip.close();
 				}
-			}
+			} else if(file.endsWith("amr")) {
+				size = (8*size)/12200;
+			} else size = 0;
+			
 			tm = String.format("%02d:%02d", size/60, size % 60);
 			s = file.substring(dirlen+2,file.length()-4); // skip "I-" or "O-" 
 			s = s.substring(0,2) + "/" + s.substring(3,5)+ " - " 

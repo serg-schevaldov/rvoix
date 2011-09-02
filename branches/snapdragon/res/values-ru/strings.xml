@@ -3,7 +3,7 @@
     
 <string name="app_name">rVoix</string>
 
-<string name="SBuild">rVoix: Версия 1.06 Сборка 207</string>
+<string name="SBuild">rVoix: Версия 1.06 Сборка 305</string>
 
 <string name="RRMode">Запустить сервис</string>
 <string name="Settings">Настройки</string>
@@ -74,11 +74,13 @@
 <string-array name="RecFormats">
 <item>WAV</item>
 <item>MP3</item>
+<item>AMR</item>
 </string-array>
 
-<string-array name="CallRecValues">
+<string-array name="RecFmtValues">
 <item>0</item>
 <item>1</item>
+<item>2</item>
 </string-array>
 
 <string name="AskRecCall">Записывать </string>
@@ -286,6 +288,8 @@
 <string name="LoudAARec">Включение динамика</string>
 <string name="NowAnswering">Отвечаю</string>
 <string name="NowRecording">Записываю</string>
+
+<string name="SRecCrit">Запись критична</string>
 
 </resources>
 

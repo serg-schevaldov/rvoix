@@ -2,15 +2,19 @@ package com.voix;
 //import android.util.Log;
 
 public class Log {
-
+	
 	private static String className;
 	private static final String log_tag = "com.voix";
 		
 	private static final void set_classname() {
-		className = Thread.currentThread().getStackTrace()[4].getClassName();
-		int i = className.lastIndexOf('.');
-		if(i == -1) return;
-		className = className.substring(i+1);
+		try {
+			className = Thread.currentThread().getStackTrace()[4].getClassName();
+			int i = className.lastIndexOf('.');
+			if(i == -1) return;
+			className = className.substring(i+1);
+		} catch (Exception e) {
+			// TODO: java.lang.StringIndexOutOfBoundsException: String index out of range: 9
+		}	
 	}
 	public static final void msg(String msg) {
 		set_classname();

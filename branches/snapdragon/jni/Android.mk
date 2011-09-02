@@ -13,6 +13,8 @@
 # limitations under the License.
 #
 
+# run "ndk-build NOLAME=1" to build without the lame support
+
 ifndef NOLAME
 USING_LAME := 1
 endif
@@ -48,11 +50,11 @@ endif
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := voix 
-LOCAL_SRC_FILES := voix.c 
+LOCAL_SRC_FILES := voix_main.c voix_msm7k.c voix_msm8k.c voix_enc.c amr.c
 LOCAL_LDLIBS := -llog
 
 ifdef USING_LAME
-LOCAL_CFLAGS += -O2 -Wall -DUSING_LAME
+LOCAL_CFLAGS += -O2 -Wall -DUSING_LAME # -DCR_CODE
 LOCAL_SHARED_LIBRARIES := lame
 else
 LOCAL_CFLAGS += -O2 -Wall
