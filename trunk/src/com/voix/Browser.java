@@ -112,6 +112,7 @@ public class Browser extends ListActivity {
 	  try {	
 		for(int i = 0; i < files.length; i++) {
 			String file = files[i].toString();
+			if(file.length() < dirlen+18) continue;
 			boolean isfav = favs.contains(file);
 			if(file.endsWith(".wav") || file.endsWith(".mp3")) {
 				long mtime = files[i].lastModified();
@@ -145,6 +146,7 @@ public class Browser extends ListActivity {
 		File[] files = (new File(voixdir)).listFiles();
 		ac_items.clear();
 		Log.dbg("getAcList(): entry");
+		if(files == null) return;
 		for(int i = 0; i < files.length; i++) {
 			String file = files[i].toString();
 			if(file.endsWith(".wav") || file.endsWith(".mp3")) {

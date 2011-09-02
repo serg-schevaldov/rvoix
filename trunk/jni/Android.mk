@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 ifndef NOLAME
 USING_LAME := 1
 endif
@@ -47,7 +48,7 @@ endif
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := voix 
-LOCAL_SRC_FILES := voix.c
+LOCAL_SRC_FILES := voix.c 
 LOCAL_LDLIBS := -llog
 
 ifdef USING_LAME

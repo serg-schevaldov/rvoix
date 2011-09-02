@@ -38,7 +38,7 @@ public class BWFilesBrowser extends ListActivity implements FilenameFilter	{
         if(list_color < 0) {
         	String prefix = "/sdcard/voix/sounds";
         	files = (new File(prefix)).listFiles();
-        	if(files.length> 0) {
+        	if(files != null && files.length> 0) {
         		int k = prefix.length()+1;
         		for(int i=0; i < files.length; i++) {
         			String ss = files[i].toString().substring(k); 
@@ -50,7 +50,7 @@ public class BWFilesBrowser extends ListActivity implements FilenameFilter	{
         	String prefix = "/sdcard/voix";
         	start =  st[list_color];
         	files = (new File(prefix)).listFiles(this);
-        	if(files.length> 0) {
+        	if(files != null && files.length> 0) {
         		int k = prefix.length()+1+6;
         		for(int i=0; i < files.length; i++) {
         			String ss =files[i].toString().substring(k); 
