@@ -18,8 +18,8 @@
 	android:key="format"
 	android:defaultValue="0"
 	android:title="@string/SRecFmt"
-	android:entries="@array/RecFormats"
-    android:entryValues="@array/CallRecValues"
+	android:entries="@array/RecFormats"	
+    android:entryValues="@array/RecFmtValues"
     android:dialogTitle="@string/SRecFmt" />
  </PreferenceCategory>
 
@@ -84,6 +84,7 @@
   
   	<PreferenceScreen
     	android:key="aas_screen"
+    	android:enabled="false"
     	android:title="@string/SAAF">
   	  <Preference
 			android:key="new_rec"
@@ -197,11 +198,13 @@
   	</PreferenceScreen>
 
   </PreferenceCategory>
-
+ <!-- 
  <PreferenceCategory
     android:title="@string/SSound">
+  	android:enabled="false"
   	<ListPreference
 		android:key="boost_up"
+		android:enabled="false"
 		android:defaultValue="0"
 		android:title="@string/SBoostUp"
 		android:entries="@array/BoostArray"
@@ -210,12 +213,14 @@
   	<ListPreference
 		android:key="boost_dn"
 		android:defaultValue="0"
+		android:enabled="false"
 		android:title="@string/SBoostDn"
 		android:entries="@array/BoostArray"
 	    android:entryValues="@array/BoostArray"
 	    android:dialogTitle="@string/SBoostDn" />
   </PreferenceCategory>
-
+ -->
+ 
   <PreferenceCategory
     android:title="@string/SBk">
   	<EditTextPreference
@@ -285,8 +290,8 @@
 		android:key="delete_log"
 		android:title="@string/SRmLog"/>
     <CheckBoxPreference
-		android:key="is_tattoo"
-    	android:title="@string/STattooHack" 
+		android:key="recording_critical"
+    	android:title="@string/SRecCrit" 
     	android:defaultValue="false"/>
   </PreferenceCategory>
   

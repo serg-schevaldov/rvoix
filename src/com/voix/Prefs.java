@@ -19,7 +19,7 @@ import android.widget.Toast;
 
 public class Prefs extends PreferenceActivity 
 	implements SharedPreferences.OnSharedPreferenceChangeListener {
-	
+		
 	private boolean prefs_changed;
 	
 	public static final int RR_REQ_CODE = 21;
@@ -46,8 +46,16 @@ public class Prefs extends PreferenceActivity
         
         ListPreference m = (ListPreference) screen.findPreference("format");
        	
-        m.setSummary(str2int(settings.getString("format", "0")) == 0 ? "WAV" : "MP3");
+        String fmt;
+        switch(str2int(settings.getString("format", "0"))) {
+        	case RVoixSrv.MODE_RECORD_WAV: fmt = "WAV"; break;  
+        	case RVoixSrv.MODE_RECORD_MP3: fmt = "MP3"; break;
+        	case RVoixSrv.MODE_RECORD_AMR: fmt = "AMR"; break;
+        	default: fmt = "";
+        }
 
+        m.setSummary(fmt);
+        
 		String []x = getResources().getStringArray(R.array.OutCallActions);
 		m = (ListPreference) screen.findPreference("outgoing_calls");
 		m.setSummary(x[str2int(settings.getString("outgoing_calls", "0"))]);
@@ -73,11 +81,12 @@ public class Prefs extends PreferenceActivity
 			m.setSummary(ia1[i]);
 		}
 		
+		/*
 		String []q = {"boost_up", "boost_dn" };
 		for(String s : q) {
 			m = (ListPreference) screen.findPreference(s);
 			m.setSummary(getString(R.string.SCurVal) + " " + settings.getString(s, "0"));
-		}
+		} */
 			
 		String []y = {"max_files", "max_storage", "max_time", "min_out_time", "nc_aa_delay", "cn_aa_delay", "un_aa_delay", "ex_aa_delay", "min_in_time"};
 		for(String s : y) {
@@ -174,7 +183,7 @@ public class Prefs extends PreferenceActivity
 	    if (pref instanceof ListPreference) {
 	        ListPreference listPref = (ListPreference) pref;
 	        String s = ""+ listPref.getEntry();
-	        if(key.equals("boost_up") || key.equals("boost_dn")) s = getString(R.string.SCurVal) + " " + s;
+	        // if(key.equals("boost_up") || key.equals("boost_dn")) s = getString(R.string.SCurVal) + " " + s;
 			pref.setSummary(s);
 	    } else if (pref instanceof EditTextPreference) {
 	    	EditTextPreference editPref = (EditTextPreference) pref;

@@ -35,16 +35,21 @@ public class RVoixSrv extends Service {
 		System.loadLibrary("lame");
 		System.loadLibrary("voix");
 	}
-	
-    public static native int startRecord(String file, int bu, int bd);
-	public static native void stopRecord(int encoding_mode);
+        
+    public static native int startRecord(String dir, String file, int codec, int boost_up, int boost_down);
+	public static native void stopRecord(int context);
+	public static native void killRecord(int context);
 	public static native void answerCall(String file, String ofile, int bd);
-
+	public static native int getDeviceType();
+	public static native int convertToMp3(String s1, String s2);
+	public static native int getKernelPatchInfo();
+	
+	
 	// NB: The first two are also hard-coded in voix.c (passed in encoding_mode to startRecord) 
 	public static final int MODE_RECORD_WAV = 0;
 	public static final int MODE_RECORD_MP3 = 1;
-	
-	private int srv_mode = MODE_RECORD_WAV;
+	public static final int MODE_RECORD_AMR = 2;
+	private int codec = MODE_RECORD_WAV;
 	
 	// NB: These are also hard-coded in prefs.xml through @arrays [In/Out]CallValues
 	public static final int OUTGOING_REC_NONE = 0;
@@ -61,7 +66,7 @@ public class RVoixSrv extends Service {
 	public static final int INCOMING_ACT_ASK_INCALL = 5;
 	//public static final int INCOMING_ACT_AUTOANSWER = 6;
 	//public static final int INCOMING_ACT_AUTOANSWER_RECORD = 7;
-	
+		
 	private int unk_proc = INCOMING_ACT_REC;
 	private int cont_proc = INCOMING_ACT_REC;
 	private int ncont_proc = INCOMING_ACT_REC;
@@ -120,6 +125,8 @@ public class RVoixSrv extends Service {
 	private static AudioManager aman = null;
 	private static ServiceLogger log = null;
 	
+	public static final String RVOIX_DIR = "/sdcard/voix";
+	
 	@Override
    	public void onCreate() {
 			Log.dbg("onCreate(): entry");
@@ -136,9 +143,20 @@ public class RVoixSrv extends Service {
 			}
 			    
 			telephony = new Telephony();
+			
 			this.registerReceiver(cr, new IntentFilter(TelephonyManager.ACTION_PHONE_STATE_CHANGED));
-			this.registerReceiver(onr, new IntentFilter(Intent.ACTION_NEW_OUTGOING_CALL));
+			//this.registerReceiver(onr, new IntentFilter(Intent.ACTION_NEW_OUTGOING_CALL));
+		
+			/*
+			IntentFilter ift;
+			ift = new IntentFilter("android.intent.action.NEW_OUTGOING_CALL");
+			ift.setPriority(999);
+			this.registerReceiver(onr, ift); 
 
+			ift = new IntentFilter("android.intent.action.PHONE_STATE");
+			ift.setPriority(1);
+			this.registerReceiver(cr, ift); */
+			
 			PowerManager pm = (PowerManager)getSystemService(Context.POWER_SERVICE);
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, this.getClass().getName());
             wakeLock.setReferenceCounted(false);
@@ -153,7 +171,7 @@ public class RVoixSrv extends Service {
     public void onDestroy() {
 			Log.msg("onDestroy()");
         	this.unregisterReceiver(cr);
-        	this.unregisterReceiver(onr);
+        //	this.unregisterReceiver(onr);
         	if(foreground) stopForegroundCompat(NOTIFY_ID);
         	if(wakeLock != null && wakeLock.isHeld()) wakeLock.release();
         	if(log != null) log.close();
@@ -165,6 +183,11 @@ public class RVoixSrv extends Service {
 
 	@Override
     public void onStart(Intent intent, int startId) {
+			String s= intent.getAction();
+			if(s != null && s.equals(Intent.ACTION_NEW_OUTGOING_CALL)) {
+				onr.onReceive(getApplicationContext(), intent);
+				return;
+			}
 			Log.dbg("onStart(): entry");
 			if(foreground) stopForegroundCompat(NOTIFY_ID);
 			getPrefs(); 
@@ -176,7 +199,7 @@ public class RVoixSrv extends Service {
 			first_start = false;
 			Log.dbg("onStart(): exit");
 	}
-
+	
 	public void goForeground() {
 			String s = getString(first_start ? R.string.SStarted : R.string.SReStarted);
 			Notification notification = new Notification(disable_notifications ? 0 : R.drawable.stat_sample, s,	
@@ -194,11 +217,13 @@ public class RVoixSrv extends Service {
 
 	private CType call_type = CType.UNKNOWN;
 
+	private int rctx = 0;
 	
 	// phone number, or contact name (if present)
 	private String out_number = null;
 	private String inc_number = null;
 	
+		
 	public static boolean recording  = false;
 	public static boolean encoding = false;
 	
@@ -214,7 +239,7 @@ public class RVoixSrv extends Service {
 	public	static boolean need_ask_activity = true;
 	public 	static boolean need_broadcast_record = false;
 	
-	public static boolean is_tattoo = false;
+	// public static boolean is_tattoo = false;
 	
 	private void set_defaults() {
 		call_type = CType.UNKNOWN;
@@ -230,6 +255,7 @@ public class RVoixSrv extends Service {
    		auto_answering = false;
    		auto_answer_recording = false;
    		auto_answering_cancelled = false;
+   		rctx = 0;
 	}
 
 	public void startAskActivity(Context context, boolean out, boolean incall) {
@@ -308,7 +334,8 @@ public class RVoixSrv extends Service {
 	    		if(call_type == CType.OUTGOING_CONT 
 	    			|| call_type == CType.OUTGOING_NCONT) start_time = System.currentTimeMillis();
 	    		cr.lastFile = makeFilename();
-		    	if(startRecord(cr.lastFile, boost_up, boost_dn) != 0) {
+		    	rctx = startRecord(RVOIX_DIR, cr.lastFile, codec, boost_up, boost_dn);
+	    		if(rctx == 0) {
 		    		if(log != null) log.write("Failed to start recording at user request");
 		    		Log.err("startRecord failed"); return;
 		    	}
@@ -339,7 +366,8 @@ public class RVoixSrv extends Service {
 	    	}
 	    	Log.dbg("start_rec(): entry");
 	    	String ss = makeFilename();
-	    	if(startRecord(ss, boost_up, boost_dn) != 0) {
+	    	rctx = startRecord(RVOIX_DIR, ss, codec, boost_up, boost_dn);
+	    	if(rctx == 0) {
 	    		if(log != null) log.write("Failed to start incall recording at user request");
 	    		Log.err("startRecord failed"); return false;
 	    	}
@@ -358,7 +386,7 @@ public class RVoixSrv extends Service {
 	    		return false;
 	    	}
 	    	Log.dbg("stop_rec(): entry");
-	    	stopRecord(srv_mode); chunk++;
+	    	stopRecord(rctx); chunk++;
 	    	if(log != null) log.write("Stopped incall recording [user request]");
 	    	Log.dbg("stop_rec(): exit");
 	    	return true;
@@ -373,18 +401,25 @@ public class RVoixSrv extends Service {
 	    public void registerCallback(IRVoixCallback cb)   { if(cb != null) cBacks.register(cb); }
         public void unregisterCallback(IRVoixCallback cb) { if(cb != null) cBacks.unregister(cb); }
 	};
-	
+		
 	// Interaction with native code: it calls us. 
 	public static void onCallAnswered() {
 		telephony.invoke("endCall");
 	}
-	public static void onRecordingComplete() {
-		Log.dbg("onRecordingComplete()");
+	
+	public static void onStartRecording(int xx) {
+		Log.dbg("onRecordingStarted(" + xx + ")");
+	}
+	public static void onRecordingComplete(int xx) {
+		Log.dbg("onRecordingComplete(" + xx + ")");
 		if(log != null) log.write("Recording complete");
 		broadcastActivities(CBack.REC_CMPL);	// re-route to our activity
 		recording = false;
 	}
-
+	public static void onErrorRecording(int xx, int err) {
+		Log.dbg("onErrorRecording(" + xx + "," + err + ")");
+	}
+	
 	public static void onAutoanswerRecordingStarted() {
 		Log.dbg("onAutoanswerRecordingStarted()");
 		broadcastActivities(CBack.AA_REC_START);		
@@ -397,8 +432,17 @@ public class RVoixSrv extends Service {
    	 	} 	
 	}
 	
-	public static void onEncodingComplete() {
-		Log.dbg("onEncodingComplete()");
+	
+	public static void onStartEncoding(int xx) {
+		Log.dbg("onEncodingStarted(" + xx + ")");
+	}
+
+	public static void onErrorEncoding(int xx, int err) {
+		Log.dbg("onErrorRecording(" + xx + "," + err + ")");
+	}
+	
+	public static void onEncodingComplete(int xx) {
+		Log.dbg("onEncodingComplete()" + xx + ")");
 		if(log != null) log.write("Encoding complete");
 		if(wakeLock.isHeld()) wakeLock.release();
 		broadcastActivities(CBack.ENC_CMPL);	// re-route to our activity
@@ -406,6 +450,7 @@ public class RVoixSrv extends Service {
 		if(auto_answering) return;
 		if(ziz != null) cleanUp(ziz);
 		java.lang.System.gc();
+		/*
 		if(is_tattoo && !ask_incall_started) {
 			Intent intent = new Intent().setClassName("com.voix", "com.voix.TattooHack");
 			if(ziz.startService(intent)== null) {
@@ -416,6 +461,7 @@ public class RVoixSrv extends Service {
 	        	android.os.Process.killProcess(android.os.Process.myPid());
 	        }
 		}
+		*/
 	}
 	
 	// NB: chunk # is updated in stop_rec()
@@ -434,10 +480,17 @@ public class RVoixSrv extends Service {
 			file = prefix + file + (s.charAt(0) == '+' ? "" : "-") + s;
    		}
 		if(ask_incall_started) file = file + "-" + chunk;
-		File f = new File("/sdcard/voix/" + file + ((srv_mode == MODE_RECORD_WAV) ? ".wav" : ".mp3"));
+		String ext;
+		switch(codec) {
+			case MODE_RECORD_WAV:	ext = ".wav"; break;
+			case MODE_RECORD_MP3:	ext = ".mp3"; break;
+			case MODE_RECORD_AMR:	ext = ".amr"; break;
+			default: return null;
+		}
+		File f = new File(RVOIX_DIR + "/" + file + ext);
 		if(f.exists()) {
 			for(int i = 0; i < 99; i++) {
-				f = new File("/sdcard/voix/" + file + "-" + i + ((srv_mode == MODE_RECORD_WAV) ? ".wav" : ".mp3"));
+				f = new File(RVOIX_DIR + "/" + file + "-" + i + ext);
 				if(!f.exists()) {
 					file = file + "-" + i;
 					break;
@@ -459,7 +512,7 @@ public class RVoixSrv extends Service {
 	////////// Receiver of outgoing calls
 	/////////////////////////////////////////////////////
 	
-	private class OutNumReceiver extends BroadcastReceiver {
+	public class OutNumReceiver extends BroadcastReceiver {
 		
 		// Phone lists 
 		private ArrayList <String> orlist = null;	//	outgoing/always record	
@@ -671,7 +724,7 @@ public class RVoixSrv extends Service {
    	   		Log.dbg("find_reply_file returing " + reply_file);
 	   		return reply_file;
 		}
-		
+				
 		@Override
 		public void onReceive(Context context, Intent intent) {
     	   	   String s = intent.getStringExtra(TelephonyManager.EXTRA_STATE);
@@ -680,7 +733,7 @@ public class RVoixSrv extends Service {
         	   ziz = context;
         	   if(s.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
            	   	
-            	    s = intent.getStringExtra("incoming_number");
+            	    s = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER);
 
             	    if(recording) {
             	    	if(log != null) log.write("Incoming call from " + s + " while recording, will be merged to " +lastFile+" if accepted");
@@ -1043,13 +1096,20 @@ public class RVoixSrv extends Service {
         	   				if(report != null) log.write(report + ", recording skipped");
         	   				return;
         	   			default: 
-        	   				Log.msg("Unknown call type, skipped."); 
+        	   				Log.msg("Unknown call type, recording.");
+        	   				call_type = CType.OUTGOING_NCONT;
+        	   				call_proc = OUTGOING_REC_ALL;
+        					out_number = "unknown";
+        	   				start_time = System.currentTimeMillis();
+        	   				break;
+        	   				/* 
         	   				set_defaults();
         	   				if(report != null) log.write(report + ", skipped: call type unknown");
-        	   				return;
+        	   				return; */
         	   		}
         	   		lastFile = makeFilename();
-        	   		if(startRecord(lastFile, boost_up, boost_dn) != 0) {
+        	   		rctx = startRecord(RVOIX_DIR, lastFile, codec, boost_up, boost_dn);
+        	   		if(rctx == 0) {
         	   			Log.err("startRecord failed");
         	   			set_defaults();
         	   			if(report != null) log.write(report + ", failed to start recording!");
@@ -1060,14 +1120,14 @@ public class RVoixSrv extends Service {
         	   			broadcastActivities(CBack.REC_START);
         	   			if(report != null) log.write(report + ", started recording to " + lastFile);
         	   		}
-       	    		// set_defaults();
+        	   		// set_defaults();
        	    		
                } else if(s.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
 
             	   	synchronized(aa_sync) {
             	   		auto_answering_cancelled = true;
             	   		if(aa_mode == AA_MODE_AUTOANSWER_RECORD) {
-            	   			stopRecord(srv_mode | 2);	// built-in in the library
+            	   			stopRecord(rctx);
             	   			broadcastActivities(CBack.DONE);
             	   			set_defaults();
             	   			return;
@@ -1101,7 +1161,7 @@ public class RVoixSrv extends Service {
        	    					if(!min_confirm) {
            	    					Log.dbg("elapsed=" + (ctime - start_time) + ", min=" 
            	    							+ min_time + ", deleting the recording");
-       	    						stopRecord(-1);
+       	    						killRecord(rctx);
        	    						if(log != null) log.write("Recording took "+ (ctime - start_time)/1000 +
        	    								"s, min value in settings="+min_time/1000+"s, deleted");
        	    					} else if(lastFile != null){
@@ -1109,8 +1169,15 @@ public class RVoixSrv extends Service {
        	    						Log.dbg("elapsed=" + (ctime - start_time) + ", min=" 
            	    						+ min_time + ", trying to ask whether to delete the recording");
        	    						String ff = new String(lastFile);
-       	    						ff += (srv_mode ==MODE_RECORD_WAV) ? ".wav" : ".mp3";
-       	    						stopRecord(srv_mode);
+       	    						String ext;
+       	    						switch(codec) {
+       	    							case MODE_RECORD_WAV: ext = ".wav"; break;
+       	    							case MODE_RECORD_MP3: ext = ".mp3"; break;
+       	    							case MODE_RECORD_AMR: ext = ".amr"; break;
+       	    							default: ext = "";
+       	    						}
+       	    						ff += ext;
+       	    						stopRecord(rctx);
        	    						wait_confirm_result = 0;
        	    						WaitConfirm wf = new WaitConfirm(ff);
        	    						wf.start();
@@ -1121,10 +1188,10 @@ public class RVoixSrv extends Service {
        	    				 	   		context.startActivity(intie);
        	    						}
        	    					} else {
-       	    						stopRecord(srv_mode);
+       	    						stopRecord(rctx);
        	    					}
-       	    				} else stopRecord(srv_mode);
-       	    			} else stopRecord(srv_mode);
+       	    				} else stopRecord(rctx);
+       	    			} else stopRecord(rctx);
        	    		}
    	    			start_time = 0;
        	    		set_defaults();
@@ -1212,14 +1279,15 @@ public class RVoixSrv extends Service {
 		Log.dbg("onAACancel(): entry");
 		synchronized(aa_sync) {
 			if(auto_answering_cancelled) return;
-			stopRecord(srv_mode | 2);
+			stopRecord(rctx);
 			aa_mode = AA_MODE_OFF;
 			ask_in_progress = false;
 		}
 		if(call_proc == INCOMING_ACT_REC) {
 			broadcastAboutToRecord(false, false, inc_number);
 	   		cr.lastFile = makeFilename();
-	   		if(startRecord(cr.lastFile, boost_up, boost_dn) != 0) {
+	   		rctx = startRecord(RVOIX_DIR, cr.lastFile, codec, boost_up, boost_dn);
+	   		if(rctx == 0) {
 	   			Log.err("onAACancel(): startRecord failed");
 	   			set_defaults();
 	   			if(report != null) log.write(report + ", failed to start recording!");
@@ -1317,7 +1385,7 @@ public class RVoixSrv extends Service {
 			}
 		}
 	}
-	
+		
 	
 	private void getPrefs(){
 		
@@ -1325,12 +1393,12 @@ public class RVoixSrv extends Service {
 		foreground = settings.getBoolean("foreground", true);
 		disable_notifications = settings.getBoolean("disable_notify", false);
 		logging = settings.getBoolean("logging", false);
-		is_tattoo = settings.getBoolean("is_tattoo", false);
+		// is_tattoo = settings.getBoolean("is_tattoo", false);
 		min_out_confirm = settings.getBoolean("min_out_confirm", true);
 		min_in_confirm = settings.getBoolean("min_in_confirm", true);
 		loud_aa_rec = settings.getBoolean("loud_aa_rec", false);
 		try {
-			srv_mode = Integer.parseInt(settings.getString("format", "0"));
+			codec = Integer.parseInt(settings.getString("format", "0"));
 			boost_up = Integer.parseInt(settings.getString("boost_up", "0"));
 			boost_dn = Integer.parseInt(settings.getString("boost_dn", "0"));
 			out_proc = Integer.parseInt(settings.getString("outgoing_calls", "3"));
