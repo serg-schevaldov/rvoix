@@ -51,16 +51,19 @@ public class BootRec extends BroadcastReceiver {
                         	olddevs = true;
                         } else if(mod.exists()) {
                         	Log.msg("vocpcm module found, trying to load it");
-                            process = Runtime.getRuntime().exec("su -c insmod /system/lib/modules/vocpcm.ko");
+                        	process = Runtime.getRuntime().exec("su");
+                        	os = new DataOutputStream(process.getOutputStream());
+                        	os.writeBytes("insmod /system/lib/modules/vocpcm.ko\n"); os.flush();
+                        	os.writeBytes("exit\n"); os.flush();
                         	process.waitFor();
-                        	process.destroy(); process = null; 
+                        	process.destroy(); process = null;
+                        	os.close(); os = null;
                         	f1 = new File("/dev/voc_rx_record");
                         	if(!f1.exists()) {
                         		Log.err("module failed to create devices, exiting");
                         		return false;
                         	}
                         } else return false;
-                        
                         process = Runtime.getRuntime().exec("su");
                         os = new DataOutputStream(process.getOutputStream());
                         os.flush();
