@@ -7,3 +7,5 @@ However, many device manufacturers do not provide necessary support for 2-way re
 For old devices (and for newer ones based on msm7227 widely used now) it is readily checked: you must have files named "voc*" in /dev directory. If you haven't, you've got to ask somebody. 
 
 For newer devices, almost surely, you have to install the updated kernel. Please look at xda forum, the chances are there exists the patch.
+
+The patches of most popular devices are at branches/snapdragon/kerntel
