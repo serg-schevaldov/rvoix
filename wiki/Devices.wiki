@@ -4,8 +4,8 @@ In principle, this program should work on any device provided that this device i
 
 However, many device manufacturers do not provide necessary support for 2-way recording in their ROMs. 
 
-For old devices (and for newer ones based on msm7227 widely used now) it is readily checked: you must have files named "voc*" in /dev directory. If you haven't, you've got to ask somebody. 
+For old devices (and for newer ones based on msm7227 widely used now) it is readily checked: you must have files named "voc*" in /dev directory. If you haven't, you've got to ask somebody.  If your device isn't HTC Tattoo, you almost surely have to apply the patch because otherwise your device won't support auto-answering.
 
-For newer devices, almost surely, you have to install the updated kernel. Please look at xda forum, the chances are there exists the patch.
+For newer devices, almost surely, you have to install the updated kernel. Please look at the xda forum, the chances are the required patch already exists.
 
-The patches of most popular devices are at branches/snapdragon/kerntel
+The patches of most popular snapdragon devices are at branches/snapdragon/kerntel -- and there's the snapdragon sources I've build 
