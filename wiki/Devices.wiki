@@ -1,6 +1,6 @@
 #summary Devices supported by rvoix
 
-In principle, this program should work on any device provided that this device is based on a Qualcomm chip, either old (msm72xx) or a new one (snapdragons like qsd8x50/msm8x55/msm7x30).
+In principle, this program should work on any device provided that the device is based on a Qualcomm chip, either old (msm72xx) or a new one (snapdragons like qsd8x50/msm8x55/msm7x30).
 
 However, many device manufacturers do not provide necessary support for 2-way recording in their ROMs. 
 
