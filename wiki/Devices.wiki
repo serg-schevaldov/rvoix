@@ -6,6 +6,6 @@ However, many device manufacturers do not provide necessary support for 2-way re
 
 For old devices (and for newer ones based on msm7227 widely used now) it is readily checked: you must have files named "voc*" in /dev directory. If you haven't, you've got to ask somebody.  If your device isn't HTC Tattoo, you almost surely have to apply the patch because otherwise your device won't support auto-answering.
 
-For newer devices: almost surely, you have to install an updated kernel. Please look at the xda forum, the chances are the required patch already exists.
+For newer devices: almost surely, you have to install an updated kernel. Please look at the xda forum, the chances are the required patch already exists (my patches for popular devices are in branches/snapdragon).
 
 The patches of most popular snapdragon devices are at branches/snapdragon/kerntel -- and there's the snapdragon sources I've build 
