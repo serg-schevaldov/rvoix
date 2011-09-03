@@ -160,50 +160,11 @@ void encoding_error(int ctx, int error) {
 }
 
 
-#ifdef CR_CODE
-
-void trial_period_ended() {
-   call_java_callback("onTrialPeriodEnded",0);
-   log_dbg("java onTrialPeriodEnded notified");
-}
-
-int is_trial_period_ended() {
-   struct tm t;
-   time_t current, trial_end;
-
-   // 15 Sep 2011
-   t.tm_year = 2011-1900;
-   t.tm_mon = 8;
-   t.tm_mday = 15;
-   t.tm_hour = 0;
-   t.tm_min = 0;
-   t.tm_sec = 0;
-   t.tm_isdst = 0;
-
-   time(&current);
-   trial_end = mktime(&t);
-   #if 1 // 1 - for trial, 0 - for full
-     return (difftime(trial_end, current) < 0); // trial
-   #else
-     return 0; // full
-   #endif
-}
-
-jboolean is_app_trial(JNIEnv* env, jobject obj) {
-   #if 1 // 1 - for trial, 0 - for full
-     return 1; // trial
-   #else
-     return 0; // full
-   #endif
-}
-static const char *classPathName = "com/skvalex/callrecorder/CallRecorderService";
-#else
 
 void answer_call(JNIEnv* env, jobject obj, jstring jfile, jstring ofile, jint jbd) {
 }
 
 static const char *classPathName = "com/voix/RVoixSrv";
-#endif
 
 
 static JNINativeMethod methods[] = {
@@ -211,9 +172,6 @@ static JNINativeMethod methods[] = {
   { "stopRecord", "(I)V", (void *) stop_record },
   { "killRecord", "(I)V", (void *) kill_record },
   { "getDeviceType", "()I",  (void *) java_get_device_type },
-#ifdef CR_CODE
-  { "isAppTrial", "()Z",  (void *) is_app_trial },
-#endif
 #ifdef USING_LAME
   { "convertToMp3", "(Ljava/lang/String;Ljava/lang/String;)I", (void *) convert_to_mp3 },
 #endif
