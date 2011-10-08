@@ -189,7 +189,8 @@ static int init_recording(rec_ctx *ctx) {
 #ifdef USING_LAME
 	    case CODEC_MP3:
 #endif
-            ctx->fd_in = open("/dev/msm_pcm_in",O_RDONLY);
+		    ctx->fd_in = open("/dev/qc_pcm_in",O_RDONLY);
+		    if(ctx->fd_in < 0) ctx->fd_in = open("/dev/msm_pcm_in",O_RDONLY);
 		break;
 	    case CODEC_AMR:
 		    ctx->fd_in = open("/dev/msm_amr_in",O_RDONLY);
