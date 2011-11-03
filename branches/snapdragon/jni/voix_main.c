@@ -50,10 +50,7 @@ static int get_device_type() {
 	}
 
 	/* last attempt: SNAPDRAGON1 & SNAPDRAGON2 use different names for amr driver (msm_amr_in vs. msm_amrnb_in) */
-	close(fd);
-	fd = open("/dev/msm_amrnb_in", O_RDONLY);
-	if(fd >= 0) device_type = DEVICE_SNAPDRAGON2;
-	else return DEVICE_SNAPDRAGON1;
+	device_type = (stat("/dev/msm_amrnb_in", &st) == 0) ? DEVICE_SNAPDRAGON2 : DEVICE_SNAPDRAGON1;
 
     dev_found:
 	close(fd);
