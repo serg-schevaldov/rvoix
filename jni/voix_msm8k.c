@@ -294,20 +294,32 @@ void kill_record_msm8k(JNIEnv* env, jobject obj, jint context) {
 static void *record(void *context) {
 
     int err_count = 0;
-    int i, voice_state;	
+    int i, voice_state;
+    int started = -1;
     rec_ctx *ctx = (rec_ctx *) context;
 
 	log_info("entering recording thread with codec %d", ctx->codec);
 	
-        i = ioctl(ctx->fd_in,AUDIO_GET_VOICE_STATE, &voice_state, sizeof voice_state);
-        if(i < 0) log_info("AUDIO_GET_VOICE_STATE not supported, skipping");
-        else while(voice_state != VOICE_STATE_INCALL) {
-            usleep(250*1000);
-            if(ioctl(ctx->fd_in,AUDIO_GET_VOICE_STATE, &voice_state, sizeof voice_state) < 0) break;
-	    if(!ctx->alive) return 0;	
-        }
+	i = ioctl(ctx->fd_in,AUDIO_GET_VOICE_STATE, &voice_state, sizeof voice_state);
+	if(i < 0) {
+		log_info("AUDIO_GET_VOICE_STATE not supported, new_logic");
+		while(started < 0) {
+			usleep(250*1000);
+			started = ioctl(ctx->fd_in, AUDIO_START, 0);
+			log_info("new_logic: started 0 %d", started);
+		}
+	}
+	else while(voice_state != VOICE_STATE_INCALL) {
+		usleep(250*1000);
+		if(ioctl(ctx->fd_in,AUDIO_GET_VOICE_STATE, &voice_state, sizeof voice_state) < 0) {
+			break;
+		}
+		if(!ctx->alive) {
+			return 0;
+		}
+	}
 
-	if(ioctl(ctx->fd_in, AUDIO_START, 0) < 0) {
+	if(started = -1 && ioctl(ctx->fd_in, AUDIO_START, 0) < 0) {
 
 	    log_info("notifying java about failure");
 	    
