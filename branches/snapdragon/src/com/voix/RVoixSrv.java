@@ -466,20 +466,21 @@ public class RVoixSrv extends Service {
 	
 	// NB: chunk # is updated in stop_rec()
 	private String makeFilename() {
-		String file = DateFormat.format("MM-dd-kkmm", new Date()).toString();
+		
+		String dateString = DateFormat.format("yyyy-MM-dd-kkmm", new Date()).toString();
+		String callType = "";
+		String callPartner = "";
+		
    		if(call_type == CType.OUTGOING_CONT || call_type == CType.OUTGOING_NCONT) {
    			if(out_number != null) {
-   				String s = new String(out_number);
-   				if(s.contains("*")) s = out_number.replace('*', '#');
-   				file = "O-" + file + (s.charAt(0) == '+' ? "" : "-") + s;
+   				callPartner = out_number.replace('*', '#');
+   				callType = "O";
    			}
    		} else if(inc_number != null){
-   			String s = new String(inc_number);
-			if(s.contains("*")) s = inc_number.replace('*', '#'); 
-   			String prefix = (aa_mode == AA_MODE_AUTOANSWER_RECORD) ? "A-" : "I-"; 
-			file = prefix + file + (s.charAt(0) == '+' ? "" : "-") + s;
+   			callPartner = inc_number.replace('*', '#');
+   			callType = (aa_mode == AA_MODE_AUTOANSWER_RECORD) ? "A" : "I";
    		}
-		if(ask_incall_started) file = file + "-" + chunk;
+		
 		String ext;
 		switch(codec) {
 			case MODE_RECORD_WAV:	ext = ".wav"; break;
@@ -487,17 +488,23 @@ public class RVoixSrv extends Service {
 			case MODE_RECORD_AMR:	ext = ".amr"; break;
 			default: return null;
 		}
-		File f = new File(RVOIX_DIR + "/" + file + ext);
+		
+		String fileName = dateString + "_" + callType + "_" + callPartner;
+		
+		if(ask_incall_started) fileName = fileName + "-" + chunk;
+		
+		File f = new File(RVOIX_DIR + "/" + fileName + ext);
 		if(f.exists()) {
 			for(int i = 0; i < 99; i++) {
-				f = new File(RVOIX_DIR + "/" + file + "-" + i + ext);
+				f = new File(RVOIX_DIR + "/" + fileName + "-" + i + ext);
 				if(!f.exists()) {
-					file = file + "-" + i;
+					fileName = fileName + "-" + i;
 					break;
 				}
 			}
 		}
-		return file;
+		
+		return fileName;
 	}
 	
 	private String report = null;
@@ -578,7 +585,7 @@ public class RVoixSrv extends Service {
 					   if(out_proc == OUTGOING_REC_NCONT) call_proc = OUTGOING_REC_ALL;
 				   } else {
 					   call_type = CType.OUTGOING_CONT;
-					   out_number = new String(name);
+					   out_number = new String(name + " (" + s + ")");
 					   if(out_proc == OUTGOING_REC_CONT) call_proc = OUTGOING_REC_ALL;
 					   if(report != null) report += (" [" + out_number +"]" );
 				   }
@@ -863,7 +870,7 @@ public class RVoixSrv extends Service {
             	   		String name = ctx.findInContacts(s);
             	   		if(name != null) {
             	   			call_type = CType.INCOMING_CONT;
-            	   			inc_number = new String(name);
+            	   			inc_number = new String(name + " (" + s + ")");
             	   			if(report != null) report += (" [" + inc_number +"]" );
             	   			aa_mode = cn_aa_mode;
     	   					aa_delay = cn_aa_delay;
